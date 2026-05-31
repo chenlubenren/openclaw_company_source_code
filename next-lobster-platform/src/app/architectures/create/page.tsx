@@ -66,7 +66,7 @@ function CreateArchitecturePageInner() {
     const agentNodes = canvasNodes.filter((n) => n.type === 'agentNode');
     const missingLobster = agentNodes.filter((n) => !(n.data as { linkedLobster?: unknown }).linkedLobster);
     if (missingLobster.length > 0) {
-      setCreateError(`⚠️ 节点没有选择龙虾`);
+      setCreateError(`⚠️ 节点没有选择Agent`);
       return;
     }
 
@@ -222,7 +222,7 @@ function CreateArchitecturePageInner() {
                   )}
                 </p>
                 <div className={`px-3 py-1 border-2 border-pixel-black font-pixel text-xs ${allLinked ? 'bg-pixel-green text-pixel-white' : 'bg-pixel-yellow text-pixel-black'}`}>
-                  {allLinked ? `✅ 全部 ${linkedCount} 个节点已关联龙虾` : `⚠️ ${linkedCount}/${agentNodes.length} 个节点已关联龙虾`}
+                  {allLinked ? `✅ 全部 ${linkedCount} 个节点已关联Agent` : `⚠️ ${linkedCount}/${agentNodes.length} 个节点已关联Agent`}
                 </div>
               </div>
             );

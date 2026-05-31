@@ -104,7 +104,7 @@ export default function MyArchitecturesPage() {
             暂无架构
           </h2>
           <p className="font-pixel text-pixel-black/60 mb-6">
-            创建新架构来管理您的龙虾团队
+            创建新架构来管理您的Agent团队
           </p>
           <div className="flex justify-center gap-4">
             <Link href="/architectures/create">

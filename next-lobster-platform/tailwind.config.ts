@@ -47,8 +47,21 @@ const config: Config = {
           '50%': { transform: 'translateY(-4px)' },
         },
       },
+      imageRendering: {
+        'pixelated': 'pixelated',
+      },
     },
   },
-  plugins: [],
+  plugins: [
+    function({ addUtilities }) {
+      addUtilities({
+        '.pixelated': {
+          'image-rendering': 'pixelated',
+          'image-rendering': '-moz-crisp-edges',
+          'image-rendering': 'crisp-edges',
+        },
+      });
+    },
+  ],
 }
 export default config

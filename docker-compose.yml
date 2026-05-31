@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3002"
+      - "3003:3003"
+    environment:
+      - NODE_ENV=production
+      - JWT_SECRET=${JWT_SECRET:-your-secret-change-me}
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3000}
+      - WORKSPACE_ROOT=/app/data/workspaces
+    volumes:
+      # Persist workspaces data
+      - agent_workspaces:/app/data/workspaces
+      # Persist database
+      - agent_db:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  agent_workspaces:
+  agent_db:

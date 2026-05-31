@@ -136,7 +136,7 @@ export function PipelineFlow({ architecture }: PipelineFlowProps) {
 
                   {/* Edit Hint */}
                   <div className="mt-1 opacity-0 hover:opacity-100 transition-opacity">
-                    <span className="font-pixel text-xs text-pixel-black/50">点击更换龙虾</span>
+                    <span className="font-pixel text-xs text-pixel-black/50">点击更换Agent</span>
                   </div>
                 </div>
 
@@ -220,7 +220,7 @@ export function PipelineFlow({ architecture }: PipelineFlowProps) {
               onClick={(e) => e.stopPropagation()}
             >
               <h3 className="font-pixel text-xl text-pixel-black mb-4 text-center">
-                选择龙虾
+                选择Agent
               </h3>
               
               <div className="space-y-3 max-h-[300px] overflow-y-auto">

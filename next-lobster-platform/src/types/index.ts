@@ -1,17 +1,29 @@
 export interface Lobster {
   id: string;
   name: string;
+  description?: string;
   role: string;
-  status: 'idle' | 'working' | 'busy';
+  status: 'idle' | 'working' | 'busy' | 'error' | 'offline';
   avatar?: string;
   createdAt: string;
   conversations: Conversation[];
-  caveId?: string; // which cave this lobster belongs to
+  tags?: string[];
+  caveId?: string;
+  updatedAt?: string;
+  platform?: string;
+  config?: AgentConfig;
   // OpenClaw configuration
   openclawPath?: string;
   openclawPort?: number;
   isConnected?: boolean;
   sessionKey?: string;
+}
+
+export interface AgentConfig {
+  apiKeys?: Record<string, string>;
+  model?: string;
+  temperature?: number;
+  maxTokens?: number;
 }
 
 export interface Conversation {
@@ -91,5 +103,48 @@ export interface Cave {
   id: string;
   name: string;
   color: string;
+  description?: string;
   createdAt: string;
+  updatedAt?: string;
+}
+
+// Auth types
+export interface User {
+  id: string;
+  email: string;
+  username: string;
+}
+
+export interface AuthResponse {
+  user: User;
+  accessToken: string;
+}
+
+export interface LoginDto {
+  email: string;
+  password: string;
+}
+
+export interface RegisterDto {
+  email: string;
+  username: string;
+  password: string;
+}
+
+// Session / Group Chat
+export interface Session {
+  id: string;
+  name: string;
+  memberIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SessionMessage {
+  id: string;
+  sessionId: string;
+  senderId: string;
+  senderName: string;
+  content: string;
+  timestamp: string;
 }

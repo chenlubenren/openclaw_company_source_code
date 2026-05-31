@@ -9,6 +9,7 @@ import { LobsterCard } from '@/components/lobster/LobsterCard';
 import { LobsterSprite } from '@/components/lobster/LobsterSprite';
 import { PixelButton } from '@/components/ui/PixelButton';
 import { BackButton } from '@/components/ui/BackButton';
+import { AgentConfigModal } from '@/components/agent/AgentConfigModal';
 
 const CAVE_COLORS = ['#3b82f6', '#22c55e', '#a855f7', '#f97316', '#ec4899', '#14b8a6'];
 
@@ -18,12 +19,16 @@ function CaveSection({
   onDeleteCave,
   onOpenAddLobster,
   onMoveToCave,
+  onDeleteLobster,
+  onConfigLobster,
 }: {
   cave: Cave;
   lobsters: Lobster[];
   onDeleteCave: (id: string) => void;
   onOpenAddLobster?: (caveId: string) => void;
   onMoveToCave?: (lobsterId: string, caveId: string | null) => void;
+  onDeleteLobster?: (lobsterId: string) => void;
+  onConfigLobster?: (lobster: Lobster) => void;
 }) {
   const [expanded, setExpanded] = useState(true);
   const isUnassigned = cave.id === '__unassigned__';
@@ -44,11 +49,11 @@ function CaveSection({
           className="w-12 h-12 rounded-full border-4 border-pixel-black flex items-center justify-center font-pixel text-white text-xl font-bold"
           style={{ background: cave.color, filter: 'brightness(0.8)' }}
         >
-          {cave.name.charAt(0)}
+          {cave.name?.charAt(0) || '?'}
         </div>
         <div className="flex-1">
           <h2 className="font-pixel text-xl text-white font-bold">{cave.name}</h2>
-          <p className="font-pixel text-white/80 text-sm">{lobsters.length} 只龙虾</p>
+          <p className="font-pixel text-white/80 text-sm">{lobsters.length} 只Agent</p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
           {!isUnassigned && onOpenAddLobster && (
@@ -58,7 +63,7 @@ function CaveSection({
               className="px-3 py-1 bg-pixel-white text-pixel-black border-2 border-pixel-black font-pixel text-xs font-bold hover:bg-pixel-yellow transition-colors"
               style={{ boxShadow: '2px 2px 0px 0px #101010' }}
             >
-              + 添加龙虾
+              + 添加Agent
             </button>
           )}
           {!isUnassigned && (
@@ -98,7 +103,7 @@ function CaveSection({
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: index * 0.05 }}
                       >
-                        <LobsterCard lobster={lobster} />
+                        <LobsterCard lobster={lobster} onDelete={onDeleteLobster} onConfig={onConfigLobster} />
                       </motion.div>
                       {!isUnassigned && onMoveToCave && (
                         <div className="flex gap-1 flex-wrap">
@@ -117,9 +122,9 @@ function CaveSection({
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <p className="font-pixel text-pixel-black/50 text-sm">这个窝里还没有龙虾</p>
+                  <p className="font-pixel text-pixel-black/50 text-sm">这个窝里还没有Agent</p>
                   <Link href="/market" className="mt-3 inline-block">
-                    <PixelButton variant="primary" size="sm">去市场领养</PixelButton>
+                    <PixelButton variant="primary" size="sm">去领养</PixelButton>
                   </Link>
                 </div>
               )}
@@ -132,31 +137,65 @@ function CaveSection({
 }
 
 export default function MyDenPage() {
-  const { lobsters, caves, addCave, removeCave, moveLobsterToCave } = useStore();
+  const { lobsters, caves, addCave, removeCave, moveLobsterToCave, createCaveAPI, deleteCaveAPI, moveAgentToCaveAPI, fetchAgents, fetchCaves, isInitialized, initialize, deleteAgentAPI } = useStore();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [addTargetCaveId, setAddTargetCaveId] = useState<string | null>(null);
   const [newCaveName, setNewCaveName] = useState('');
   const [newCaveColor, setNewCaveColor] = useState(CAVE_COLORS[0]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [configAgent, setConfigAgent] = useState<Lobster | null>(null);
 
-  const handleCreateCave = () => {
+  // Initialize data from API
+  useEffect(() => {
+    const init = async () => {
+      await initialize();
+      setIsLoading(false);
+    };
+    init();
+  }, []);
+
+  const handleConfigLobster = (lobster: Lobster) => {
+    setConfigAgent(lobster);
+  };
+
+  const handleConfigSave = () => {
+    initialize();
+  };
+
+  const handleCreateCave = async () => {
     if (!newCaveName.trim()) return;
-    addCave({
-      id: `cave-${Date.now()}`,
-      name: newCaveName.trim(),
-      color: newCaveColor,
-      createdAt: new Date().toISOString(),
-    });
-    setNewCaveName('');
-    setNewCaveColor(CAVE_COLORS[0]);
-    setShowCreateDialog(false);
+    try {
+      await createCaveAPI(newCaveName.trim(), newCaveColor);
+      setNewCaveName('');
+      setNewCaveColor(CAVE_COLORS[0]);
+      setShowCreateDialog(false);
+    } catch (error) {
+      console.error('Failed to create cave:', error);
+    }
   };
 
-  const handleDeleteCave = (caveId: string) => {
-    removeCave(caveId);
+  const handleDeleteCave = async (caveId: string) => {
+    try {
+      await deleteCaveAPI(caveId);
+    } catch (error) {
+      console.error('Failed to delete cave:', error);
+    }
   };
 
-  const handleMoveToCave = (lobsterId: string, caveId: string | null) => {
-    moveLobsterToCave(lobsterId, caveId);
+  const handleMoveToCave = async (lobsterId: string, caveId: string | null) => {
+    try {
+      await moveAgentToCaveAPI(lobsterId, caveId);
+    } catch (error) {
+      console.error('Failed to move agent:', error);
+    }
+  };
+
+  const handleDeleteLobster = async (lobsterId: string) => {
+    try {
+      await deleteAgentAPI(lobsterId);
+    } catch (error) {
+      console.error('Failed to delete agent:', error);
+    }
   };
 
   useEffect(() => {
@@ -164,6 +203,20 @@ export default function MyDenPage() {
       setAddTargetCaveId(null);
     }
   }, [addTargetCaveId, caves]);
+
+  if (isLoading || !isInitialized) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 pb-16">
+        <BackButton href="/" />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-pixel-blue border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="font-pixel text-pixel-black/60">加载中...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Group lobsters by cave
   const lobstersByCave: Record<string, Lobster[]> = {};
@@ -201,10 +254,10 @@ export default function MyDenPage() {
         animate={{ opacity: 1, y: 0 }}
         className="text-center mb-8 pt-6"
       >
-        <h1 className="chinese-large text-pixel-black mb-2">我的龙虾窝</h1>
-        <p className="font-pixel text-xl text-pixel-blue">MY LOBSTER DEN</p>
+        <h1 className="chinese-large text-pixel-black mb-2">我的agent窝</h1>
+        <p className="font-pixel text-xl text-pixel-blue">MY AGENT DEN</p>
         <p className="font-pixel text-sm text-pixel-black/60 mt-2">
-          {lobsters.length} 只龙虾 · {caves.length} 个窝
+          {lobsters.length} 只Agent · {caves.length} 个窝
         </p>
       </motion.div>
 
@@ -242,7 +295,7 @@ export default function MyDenPage() {
       {/* Create Cave Button */}
       <div className="flex justify-center mb-6">
         <PixelButton variant="primary" onClick={() => setShowCreateDialog(true)}>
-          + 创建新龙虾窝
+          + 创建新agent窝
         </PixelButton>
       </div>
 
@@ -254,8 +307,8 @@ export default function MyDenPage() {
           className="text-center py-16"
         >
           <div className="text-6xl mb-4">🦞</div>
-          <h2 className="chinese-large text-pixel-black mb-4">暂无龙虾窝</h2>
-          <p className="font-pixel text-pixel-black/60 mb-6">先去创建一个龙虾窝吧！</p>
+          <h2 className="chinese-large text-pixel-black mb-4">暂无agent窝</h2>
+          <p className="font-pixel text-pixel-black/60 mb-6">先去创建一个agent窝吧！</p>
           <PixelButton variant="primary" onClick={() => setShowCreateDialog(true)}>
             创建第一个窝
           </PixelButton>
@@ -271,6 +324,8 @@ export default function MyDenPage() {
               onDeleteCave={handleDeleteCave}
               onOpenAddLobster={(id) => setAddTargetCaveId(id)}
               onMoveToCave={handleMoveToCave}
+              onDeleteLobster={handleDeleteLobster}
+              onConfigLobster={handleConfigLobster}
             />
           ))}
 
@@ -280,12 +335,14 @@ export default function MyDenPage() {
               cave={{ id: '__unassigned__', name: '暂无归属', color: '#6b7280', createdAt: '' }}
               lobsters={unassigned}
               onDeleteCave={() => {}}
+              onDeleteLobster={handleDeleteLobster}
+              onConfigLobster={handleConfigLobster}
             />
           )}
         </div>
       )}
 
-      {/* 向指定窝添加龙虾：可选暂无归属或其他窝的龙虾 */}
+      {/* 向指定窝添加Agent：可选暂无归属或其他窝的Agent */}
       <AnimatePresence>
         {addTargetCaveId != null && addTargetCave && (
           <motion.div
@@ -310,7 +367,7 @@ export default function MyDenPage() {
                 style={{ background: addTargetCave.color }}
               >
                 <span className="leading-tight">
-                  向「{addTargetCave.name}」添加龙虾
+                  向「{addTargetCave.name}」添加Agent
                 </span>
                 <button
                   type="button"
@@ -325,7 +382,7 @@ export default function MyDenPage() {
               <div className="p-4 overflow-y-auto flex-1 min-h-0 space-y-6">
                 {addCandidates.length === 0 ? (
                   <p className="font-pixel text-sm text-pixel-black/60 text-center py-6">
-                    没有可移入的龙虾：其它窝和暂无归属里都没有龙虾，或已全部在本窝。
+                    没有可移入的Agent：其它窝和暂无归属里都没有Agent，或已全部在本窝。
                   </p>
                 ) : (
                   <>
@@ -352,7 +409,7 @@ export default function MyDenPage() {
                                 className="px-2 py-1 shrink-0 bg-pixel-green text-pixel-white border-2 border-pixel-black font-pixel text-xs font-bold hover:brightness-95"
                                 style={{ boxShadow: '2px 2px 0 #101010' }}
                               >
-                                放入此窝
+                                放入此Agent窝
                               </button>
                             </li>
                           ))}
@@ -382,7 +439,7 @@ export default function MyDenPage() {
                                 className="px-2 py-1 shrink-0 bg-pixel-green text-pixel-white border-2 border-pixel-black font-pixel text-xs font-bold hover:brightness-95"
                                 style={{ boxShadow: '2px 2px 0 #101010' }}
                               >
-                                放入此窝
+                                放入此Agent窝
                               </button>
                             </li>
                           ))}
@@ -423,7 +480,7 @@ export default function MyDenPage() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="bg-pixel-blue text-pixel-white font-pixel text-xl p-4 border-b-4 border-pixel-black flex justify-between items-center">
-                <span>创建龙虾窝</span>
+                <span>创建agent窝</span>
                 <button
                   onClick={() => setShowCreateDialog(false)}
                   className="w-8 h-8 bg-pixel-red text-pixel-white border-2 border-pixel-black flex items-center justify-center hover:bg-pixel-orange"
@@ -482,6 +539,14 @@ export default function MyDenPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {configAgent && (
+        <AgentConfigModal
+          agent={configAgent}
+          onClose={() => setConfigAgent(null)}
+          onSave={handleConfigSave}
+        />
+      )}
     </div>
   );
 }

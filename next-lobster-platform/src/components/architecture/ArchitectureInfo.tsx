@@ -47,7 +47,7 @@ export function ArchitectureInfo({ architecture }: ArchitectureInfoProps) {
                 : undefined;
               const chipLabel = agent.name || linked?.name || agent.role;
               const titleHint = linked
-                ? `${agent.name} · 关联龙虾：${linked.name}`
+                ? `${agent.name} · 关联Agent：${linked.name}`
                 : agent.role;
               return (
                 <span

@@ -776,7 +776,7 @@ export default function NodeCanvas({ onAgentsChange, onGraphChange, initialTempl
               variant="secondary"
               size="sm"
             >
-              🟢 关联龙虾
+              🟢 关联Agent
             </PixelButton>
           )}
         </div>
@@ -928,7 +928,7 @@ export default function NodeCanvas({ onAgentsChange, onGraphChange, initialTempl
 
                     {/* Link lobster */}
                     <div>
-                      <label className="font-pixel text-xs text-pixel-black/60 block mb-1">关联龙虾</label>
+                      <label className="font-pixel text-xs text-pixel-black/60 block mb-1">关联Agent</label>
                       <button
                         onClick={() => setShowLobsterPicker(true)}
                         className={`
@@ -936,7 +936,7 @@ export default function NodeCanvas({ onAgentsChange, onGraphChange, initialTempl
                           ${data.linkedLobster ? 'bg-pixel-blue text-pixel-white' : 'bg-pixel-gray text-pixel-black'}
                         `}
                       >
-                        {data.linkedLobster ? `🟢 ${data.linkedLobster.name}` : '点击选择龙虾...'}
+                        {data.linkedLobster ? `🟢 ${data.linkedLobster.name}` : '点击选择Agent...'}
                       </button>
                       {data.linkedLobster && (
                         <div className="mt-1 text-xs text-pixel-black/50 font-pixel">
@@ -1033,12 +1033,12 @@ export default function NodeCanvas({ onAgentsChange, onGraphChange, initialTempl
               style={{ boxShadow: '8px 8px 0px 0px #101010' }}
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="font-pixel text-lg text-pixel-black mb-4 text-center">选择关联龙虾</h3>
+              <h3 className="font-pixel text-lg text-pixel-black mb-4 text-center">选择关联Agent</h3>
               {lobsters.length === 0 ? (
                 <div className="text-center py-6">
                   <div className="text-4xl mb-3 opacity-40">🦞</div>
-                  <p className="font-pixel text-pixel-black/60 text-sm mb-2">龙虾窝里还没有龙虾</p>
-                  <p className="font-pixel text-pixel-black/40 text-xs">请先在「我的龙虾窝」领养或添加龙虾后再来关联</p>
+                  <p className="font-pixel text-pixel-black/60 text-sm mb-2">Agent窝里还没有Agent</p>
+                  <p className="font-pixel text-pixel-black/40 text-xs">请先在「我的agent窝」领养或添加Agent后再来关联</p>
                 </div>
               ) : (
                 <div className="space-y-2 max-h-[300px] overflow-y-auto">

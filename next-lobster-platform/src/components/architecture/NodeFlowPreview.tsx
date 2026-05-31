@@ -478,7 +478,7 @@ export function NodeFlowPreview({ architecture }: NodeFlowPreviewProps) {
               <span className="font-pixel text-pixel-white/70 text-xs">
                 {linkedLobster?.name ??
                   (activeAgent?.role ?? (activeNode.data?.role as string)) ??
-                  '未关联龙虾'}
+                  '未关联Agent'}
               </span>
             </div>
 
@@ -534,7 +534,7 @@ export function NodeFlowPreview({ architecture }: NodeFlowPreviewProps) {
               <div className="pt-1 border-t-2 border-pixel-black/20">
                 <div className="flex items-center gap-1 mb-2">
                   <span className="bg-pixel-purple text-pixel-white px-1.5 py-0.5 border-2 border-pixel-black text-xs">
-                    🦞 关联龙虾
+                    🦞 关联Agent
                   </span>
                 </div>
                 {linkedLobster ? (
@@ -558,7 +558,7 @@ export function NodeFlowPreview({ architecture }: NodeFlowPreviewProps) {
                     </div>
                   </div>
                 ) : (
-                  <span className="text-pixel-black/40 text-xs italic">未关联任何龙虾</span>
+                  <span className="text-pixel-black/40 text-xs italic">未关联任何Agent</span>
                 )}
               </div>
 

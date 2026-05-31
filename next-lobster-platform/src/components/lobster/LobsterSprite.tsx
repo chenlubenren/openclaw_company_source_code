@@ -7,6 +7,7 @@ interface LobsterSpriteProps {
   lobster: Lobster;
   size?: 'sm' | 'md' | 'lg';
   showStatus?: boolean;
+  silhouette?: boolean;
 }
 
 /** 与 db.json id 一一对应：主控粉、研究绿、数据蓝、写作橙
@@ -70,23 +71,28 @@ const imgStyle: CSSProperties = {
   pointerEvents: 'none' as const,
 };
 
-export function LobsterSprite({ lobster, size = 'md', showStatus = true }: LobsterSpriteProps) {
+export function LobsterSprite({ lobster, size = 'md', showStatus = true, silhouette = false }: LobsterSpriteProps) {
   const { activeLobsterId, setActiveLobster } = useStore();
   const isActive = activeLobsterId === lobster.id;
 
-  const statusAnimations = {
+  const statusAnimations: Record<string, { y?: number[]; rotate?: number[]; scale?: number[]; opacity?: number[]; transition?: { duration: number; repeat: number } }> = {
     idle: { y: [0, -2, 0], transition: { duration: 2.5, repeat: Infinity } },
     working: { rotate: [-4, 4], transition: { duration: 0.3, repeat: Infinity } },
     busy: { scale: [1, 1.06, 1], transition: { duration: 0.6, repeat: Infinity } },
+    error: { opacity: [1, 0.5, 1], transition: { duration: 1, repeat: Infinity } },
+    offline: {},
   };
 
   const displayPx = DISPLAY_PX[size];
 
-  const statusColors = { idle: 'bg-pixel-green', working: 'bg-pixel-yellow', busy: 'bg-pixel-red' };
-  const statusLabels = { idle: 'IDLE', working: 'WORKING', busy: 'BUSY' };
+  const statusColors: Record<string, string> = { idle: 'bg-pixel-green', working: 'bg-pixel-yellow', busy: 'bg-pixel-red', error: 'bg-pixel-black', offline: 'bg-pixel-gray' };
+  const statusLabels: Record<string, string> = { idle: 'IDLE', working: 'WORKING', busy: 'BUSY', error: 'ERROR', offline: 'OFF' };
 
-  // 自定义形象（像素编辑器绘制）优先于预设精灵图
   const imageSrc = lobster.avatar ?? spriteSrc(lobster.id);
+
+  const spriteStyle: CSSProperties = silhouette
+    ? { ...imgStyle, filter: 'brightness(0) opacity(0.25)', mixBlendMode: 'multiply' }
+    : imgStyle;
 
   return (
     <motion.div
@@ -96,10 +102,10 @@ export function LobsterSprite({ lobster, size = 'md', showStatus = true }: Lobst
     >
       <div style={frameStyle(displayPx)}>
         {/* eslint-disable-next-line @next/next/no-img-element -- 独立精灵 PNG */}
-        <img src={imageSrc} alt={lobster.name} style={imgStyle} draggable={false} />
+        <img src={imageSrc} alt={lobster.name} style={spriteStyle} draggable={false} />
       </div>
 
-      {showStatus && (
+      {showStatus && !silhouette && (
         <div className="absolute -top-1.5 -right-1.5 z-10">
           <div
             className={`

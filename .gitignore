@@ -15,7 +15,12 @@ coverage/
 # Misc
 .DS_Store
 *.pem
+.env
 .env*.local
+!.env.example
+
+# Backend runtime data
+backend/data/
 
 # Debug
 npm-debug.log*

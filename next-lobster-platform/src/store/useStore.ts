@@ -1,74 +1,109 @@
 import { create } from 'zustand';
-import { Lobster, Architecture, Message, ArchitectureAgent, OpenClawConfig, Cave } from '@/types';
-import { mockLobsters, mockArchitectures, mockMessages } from '@/lib/mockData';
+import { Lobster, Cave, ArchitectureAgent, OpenClawConfig } from '@/types';
+import * as api from '@/lib/api';
+import { useAuthStore } from './useAuthStore';
 
 interface LobsterStore {
   lobsters: Lobster[];
-  architectures: Architecture[];
   caves: Cave[];
-  messages: Message[];
+  messages: any[];
+  sessions: any[];
+  sessionMessages: any[];
   activeLobsterId: string | null;
   activeArchitectureId: string | null;
   currentTask: string | null;
   activeAgentId: string | null;
   openclawConfigs: OpenClawConfig[];
   coins: number;
+  isLoading: boolean;
+  isInitialized: boolean;
+
   spendCoins: (amount: number) => void;
+
+  // Data fetching
+  fetchCaves: () => Promise<void>;
+  fetchAgents: (caveId?: string) => Promise<void>;
 
   // Cave actions
   addCave: (cave: Cave) => void;
   removeCave: (id: string) => void;
   updateCave: (id: string, updates: Partial<Cave>) => void;
+  createCaveAPI: (name: string, color: string) => Promise<Cave>;
+  deleteCaveAPI: (id: string) => Promise<void>;
 
   // Lobster actions
   setLobsters: (lobsters: Lobster[]) => void;
   addLobster: (lobster: Lobster) => void;
-  addMarketLobster: (lobster: Lobster) => void;
   updateLobsterStatus: (id: string, status: Lobster['status']) => void;
   setActiveLobster: (id: string | null) => void;
   addConversation: (lobsterId: string, conversation: { role: 'user' | 'lobster'; content: string }) => void;
-  updateLobsterOpenClaw: (id: string, config: Partial<Lobster>) => void;
   moveLobsterToCave: (lobsterId: string, caveId: string | null) => void;
+  moveAgentToCaveAPI: (agentId: string, caveId: string | null) => Promise<void>;
+  createAgentAPI: (name: string, description?: string) => Promise<any>;
+  deleteAgentAPI: (id: string) => Promise<void>;
 
   // Architecture actions
-  setArchitectures: (architectures: Architecture[]) => void;
-  addArchitecture: (architecture: Architecture) => void;
-  setActiveArchitecture: (id: string | null) => void;
-  setActiveAgent: (agentId: string | null) => void;
   updateAgentStatus: (archId: string, agentId: string, status: ArchitectureAgent['status']) => void;
-  updateAgentLink: (archId: string, agentId: string, lobsterId: string) => void;
-  setCurrentTask: (task: string | null) => void;
 
   // OpenClaw actions
   setOpenclawConfigs: (configs: OpenClawConfig[]) => void;
   updateOpenclawConfig: (workspacePath: string, config: Partial<OpenClawConfig>) => void;
 
-  // Message actions
-  setMessages: (messages: Message[]) => void;
-  addMessage: (message: Message) => void;
+  // Initialize
+  initialize: () => Promise<void>;
+}
+
+// Helper to convert API agent to Lobster type
+function agentToLobster(agent: any): Lobster {
+  let tags: string[] = [];
+  try {
+    if (typeof agent.tags === 'string') {
+      tags = JSON.parse(agent.tags);
+    } else if (Array.isArray(agent.tags)) {
+      tags = agent.tags;
+    }
+  } catch {}
+
+  return {
+    id: agent.id,
+    name: agent.name,
+    description: agent.description || '',
+    avatar: agent.avatar || '',
+    role: agent.description || 'AI Agent',
+    status: agent.status || 'idle',
+    conversations: [],
+    tags,
+    caveId: agent.caveId || undefined,
+    createdAt: agent.createdAt,
+    updatedAt: agent.updatedAt,
+  };
+}
+
+// Helper to convert API cave to Cave type
+function agentCaveToCave(cave: any): Cave {
+  return {
+    id: cave.id,
+    name: cave.name,
+    color: cave.color,
+    description: cave.description || '',
+    createdAt: cave.createdAt,
+    updatedAt: cave.updatedAt,
+  };
 }
 
 export const useStore = create<LobsterStore>((set, get) => ({
-  lobsters: mockLobsters,
-  architectures: mockArchitectures,
-  messages: mockMessages,
-  caves: [
-    { id: 'cave-1', name: '主窝', color: '#3b82f6', createdAt: new Date().toISOString() },
-  ],
+  lobsters: [],
+  caves: [],
+  messages: [],
   activeLobsterId: null,
   activeArchitectureId: null,
   currentTask: null,
   activeAgentId: null,
   coins: 2500,
-
-  spendCoins: (amount) => set((state) => ({ coins: Math.max(0, state.coins - amount) })),
-
-  // Cave actions
-  addCave: (cave) => set((state) => ({ caves: [...state.caves, cave] })),
-  removeCave: (id) => set((state) => ({ caves: state.caves.filter(c => c.id !== id) })),
-  updateCave: (id, updates) => set((state) => ({
-    caves: state.caves.map(c => c.id === id ? { ...c, ...updates } : c)
-  })),
+  isLoading: false,
+  isInitialized: false,
+  sessions: [],
+  sessionMessages: [],
 
   openclawConfigs: [
     {
@@ -83,10 +118,51 @@ export const useStore = create<LobsterStore>((set, get) => ({
     }
   ],
 
+  spendCoins: (amount) => set((state) => ({ coins: Math.max(0, state.coins - amount) })),
+
+  // Data fetching
+  fetchCaves: async () => {
+    try {
+      const caves = await api.fetchCaves();
+      set({ caves });
+    } catch (error) {
+      console.error('Failed to fetch caves:', error);
+    }
+  },
+
+  fetchAgents: async (caveId?: string) => {
+    try {
+      set({ isLoading: true });
+      const agents = await api.fetchAgents(caveId);
+      const lobsters = agents.map(agentToLobster);
+      set({ lobsters, isLoading: false });
+    } catch (error) {
+      console.error('Failed to fetch agents:', error);
+      set({ isLoading: false });
+    }
+  },
+
+  // Cave actions
+  addCave: (cave) => set((state) => ({ caves: [...state.caves, cave] })),
+  removeCave: (id) => set((state) => ({ caves: state.caves.filter(c => c.id !== id) })),
+  updateCave: (id, updates) => set((state) => ({
+    caves: state.caves.map(c => c.id === id ? { ...c, ...updates } : c)
+  })),
+
+  createCaveAPI: async (name, color) => {
+    const cave = await api.createCave(name, color);
+    get().addCave(agentCaveToCave(cave));
+    return cave;
+  },
+
+  deleteCaveAPI: async (id) => {
+    // Delete cave API call would go here
+    get().removeCave(id);
+  },
+
   // Lobster actions
   setLobsters: (lobsters) => set({ lobsters }),
   addLobster: (lobster) => set((state) => ({ lobsters: [...state.lobsters, lobster] })),
-  addMarketLobster: (lobster: Lobster) => set((state) => ({ lobsters: [...state.lobsters, lobster] })),
   updateLobsterStatus: (id, status) => set((state) => ({
     lobsters: state.lobsters.map(l => l.id === id ? { ...l, status } : l)
   })),
@@ -106,47 +182,37 @@ export const useStore = create<LobsterStore>((set, get) => ({
       return l;
     })
   })),
-  updateLobsterOpenClaw: (id, config) => set((state) => ({
-    lobsters: state.lobsters.map(l => l.id === id ? { ...l, ...config } : l)
-  })),
-  moveLobsterToCave: (lobsterId: string, caveId: string | null) => set((state) => ({
+  moveLobsterToCave: (lobsterId, caveId) => set((state) => ({
     lobsters: state.lobsters.map(l => l.id === lobsterId ? { ...l, caveId: caveId ?? undefined } : l)
   })),
 
+  moveAgentToCaveAPI: async (agentId, caveId) => {
+    await api.updateAgent(agentId, { caveId: caveId ?? null });
+    get().moveLobsterToCave(agentId, caveId);
+  },
+
+  createAgentAPI: async (name, description) => {
+    const agent = await api.createAgent({ name, description });
+    const lobster = agentToLobster(agent);
+    get().addLobster(lobster);
+    return agent;
+  },
+
+  deleteAgentAPI: async (id) => {
+    const token = useAuthStore.getState().token;
+    await fetch(`http://localhost:3002/api/agents/${id}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    set((state) => ({ lobsters: state.lobsters.filter(l => l.id !== id) }));
+  },
+
   // Architecture actions
-  setArchitectures: (architectures) => set({ architectures }),
-  addArchitecture: (architecture) => set((state) => ({
-    architectures: [...state.architectures, architecture]
-  })),
-  setActiveArchitecture: (id) => set({ activeArchitectureId: id }),
-  setActiveAgent: (agentId) => set({ activeAgentId: agentId }),
-  updateAgentStatus: (archId, agentId, status) => set((state) => ({
-    architectures: state.architectures.map(arch => {
-      if (arch.id === archId) {
-        return {
-          ...arch,
-          agents: arch.agents.map(agent =>
-            agent.id === agentId ? { ...agent, status } : agent
-          )
-        };
-      }
-      return arch;
-    })
-  })),
-  updateAgentLink: (archId, agentId, lobsterId) => set((state) => ({
-    architectures: state.architectures.map(arch => {
-      if (arch.id === archId) {
-        return {
-          ...arch,
-          agents: arch.agents.map(agent =>
-            agent.id === agentId ? { ...agent, linkedLobsterId: lobsterId } : agent
-          )
-        };
-      }
-      return arch;
-    })
-  })),
-  setCurrentTask: (task) => set({ currentTask: task }),
+  updateAgentStatus: (archId, agentId, status) => {
+    // Not implemented in this version
+  },
 
   // OpenClaw actions
   setOpenclawConfigs: (configs) => set({ openclawConfigs: configs }),
@@ -156,7 +222,23 @@ export const useStore = create<LobsterStore>((set, get) => ({
     )
   })),
 
-  // Message actions
-  setMessages: (messages) => set({ messages }),
-  addMessage: (message) => set((state) => ({ messages: [...state.messages, message] })),
+  // Initialize - fetch data from API
+  initialize: async () => {
+    const token = useAuthStore.getState().token;
+    if (!token) {
+      set({ isInitialized: true });
+      return;
+    }
+
+    try {
+      await Promise.all([
+        get().fetchCaves(),
+        get().fetchAgents(),
+      ]);
+      set({ isInitialized: true });
+    } catch (error) {
+      console.error('Failed to initialize store:', error);
+      set({ isInitialized: true });
+    }
+  },
 }));

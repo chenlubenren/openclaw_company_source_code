@@ -106,7 +106,7 @@ export default function DesignPage() {
             {
               id: `conv-${Date.now()}`,
               role: 'lobster',
-              content: `你好！我是 ${name.trim()}，一只活泼的小龙虾。很高兴认识你！有什么我可以帮忙的吗？`,
+              content: `你好！我是 ${name.trim()}，一只聪明的智能体。很高兴认识你！有什么我可以帮忙的吗？`,
               timestamp: new Date().toISOString(),
             },
           ],
@@ -131,7 +131,7 @@ export default function DesignPage() {
         animate={{ opacity: 1, y: 0 }}
         className="text-center mt-6 mb-6"
       >
-        <h1 className="chinese-large text-pixel-black mb-1">设计龙虾形象</h1>
+        <h1 className="chinese-large text-pixel-black mb-1">设计Agent形象</h1>
         <p className="font-pixel text-xl text-pixel-blue">LOBSTER DESIGN STUDIO</p>
       </motion.div>
 
@@ -223,12 +223,12 @@ export default function DesignPage() {
             {/* Name */}
             <div>
               <label className="font-pixel text-pixel-black block mb-2 text-sm">
-                龙虾名称
+                Agent名称
               </label>
               <PixelInput
                 value={name}
                 onChange={setName}
-                placeholder="给你的龙虾起个名字..."
+                placeholder="给你的Agent起个名字..."
                 className="w-full"
               />
             </div>
@@ -275,7 +275,7 @@ export default function DesignPage() {
               <textarea
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-                placeholder="描述这只龙虾的职责和能力，例如：擅长编写 Python 脚本处理自动化任务..."
+                placeholder="描述这只Agent的职责和能力，例如：擅长编写 Python 脚本处理自动化任务..."
                 rows={5}
                 className="
                   w-full
@@ -302,11 +302,11 @@ export default function DesignPage() {
               <p className="font-pixel text-xs text-pixel-black/70">
                 {publishToMarket ? (
                   <>
-                    <span className="text-pixel-green font-bold">✓</span> 此龙虾将公开到龙虾市场
+                    <span className="text-pixel-green font-bold">✓</span> 此Agent将公开到Agent市场
                   </>
                 ) : (
                   <>
-                    <span className="text-pixel-black/40">—</span> 此龙虾仅自己可见
+                    <span className="text-pixel-black/40">—</span> 此Agent仅自己可见
                   </>
                 )}
               </p>

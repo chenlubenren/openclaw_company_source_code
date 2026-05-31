@@ -10,6 +10,8 @@ interface PixelButtonProps {
   size?: 'sm' | 'md' | 'lg';
   disabled?: boolean;
   className?: string;
+  type?: 'button' | 'submit' | 'reset';
+  title?: string;
 }
 
 export function PixelButton({
@@ -18,7 +20,9 @@ export function PixelButton({
   variant = 'primary',
   size = 'md',
   disabled = false,
-  className = ''
+  className = '',
+  type = 'button',
+  title,
 }: PixelButtonProps) {
   const variantStyles = {
     primary: 'bg-pixel-red text-pixel-white hover:bg-pixel-orange border-pixel-brown',
@@ -34,6 +38,8 @@ export function PixelButton({
 
   return (
     <motion.button
+      type={type}
+      title={title}
       whileHover={{ scale: disabled ? 1 : 1.05 }}
       whileTap={{ scale: disabled ? 1 : 0.95 }}
       onClick={onClick}
