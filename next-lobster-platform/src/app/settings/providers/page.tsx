@@ -5,9 +5,7 @@ import { motion } from 'framer-motion';
 import { BackButton } from '@/components/ui/BackButton';
 import { PixelButton } from '@/components/ui/PixelButton';
 import { useAuthStore } from '@/store/useAuthStore';
-import { fetchRuntimeHealth } from '@/lib/api';
 import { API_BASE } from '@/lib/runtime';
-import type { RuntimeHealth } from '@/types';
 import {
   PROVIDER_TYPES,
   findPresetForProvider,
@@ -68,129 +66,6 @@ function buildCopiedProvider(provider: Provider, targetType: ProviderType) {
   };
 }
 
-function RuntimeHealthPanel({
-  health,
-  loading,
-  error,
-  onRefresh,
-}: {
-  health: RuntimeHealth | null;
-  loading: boolean;
-  error: string;
-  onRefresh: () => void;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0, transition: { delay: 0.12 } }}
-      className="mb-6 border-4 border-pixel-black bg-pixel-white p-4"
-      style={{ boxShadow: '6px 6px 0 #101010' }}
-    >
-      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="font-pixel text-lg text-pixel-black">运行时预检</h2>
-          <p className="mt-1 font-pixel text-xs text-pixel-black/55">
-            提前检查本机 CLI 与供应商配置，避免单聊、茶话会或团队执行时才发现 spawn/超时问题。
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onRefresh}
-          className="border-2 border-pixel-black bg-pixel-blue px-3 py-2 font-pixel text-xs text-pixel-white"
-          style={{ boxShadow: '2px 2px 0 #101010' }}
-        >
-          {loading ? '检查中...' : '重新检查'}
-        </button>
-      </div>
-
-      {error && (
-        <div className="mb-3 border-4 border-pixel-red bg-pixel-red/10 px-3 py-2 font-pixel text-xs text-pixel-red">
-          {error}
-        </div>
-      )}
-
-      {health ? (
-        <>
-          <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <div className="border-2 border-pixel-black bg-pixel-green px-3 py-2 text-pixel-white">
-              <p className="font-pixel text-xs">可运行</p>
-              <p className="font-pixel text-2xl leading-none">{health.summary.ready}/{health.summary.total}</p>
-            </div>
-            <div className="border-2 border-pixel-black bg-pixel-red px-3 py-2 text-pixel-white">
-              <p className="font-pixel text-xs">缺 CLI</p>
-              <p className="font-pixel text-2xl leading-none">{health.summary.missingCli}</p>
-            </div>
-            <div className="border-2 border-pixel-black bg-pixel-yellow px-3 py-2 text-pixel-black">
-              <p className="font-pixel text-xs">缺供应商</p>
-              <p className="font-pixel text-2xl leading-none">{health.summary.missingProvider}</p>
-            </div>
-            <div className="border-2 border-pixel-black bg-pixel-gray px-3 py-2 text-pixel-white">
-              <p className="font-pixel text-xs">检查时间</p>
-              <p className="truncate font-pixel text-xs">{new Date(health.checkedAt).toLocaleTimeString()}</p>
-            </div>
-          </div>
-
-          <div className="grid gap-2 md:grid-cols-2">
-            {health.platforms.map((item) => (
-              <div
-                key={item.platform}
-                className="border-2 border-pixel-black bg-pixel-cream p-3"
-                style={{ boxShadow: '3px 3px 0 #101010' }}
-              >
-                <div className="mb-2 flex items-center justify-between gap-3">
-                  <span className="font-pixel text-sm font-bold text-pixel-black">{item.label}</span>
-                  <span
-                    className={`border-2 border-pixel-black px-2 py-0.5 font-pixel text-[10px] ${
-                      item.ready ? 'bg-pixel-green text-pixel-white' : 'bg-pixel-red text-pixel-white'
-                    }`}
-                  >
-                    {item.ready ? 'READY' : 'CHECK'}
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <span className={`border-2 border-pixel-black px-2 py-1 font-pixel text-xs ${item.cli.available ? 'bg-pixel-green text-pixel-white' : 'bg-pixel-gray text-pixel-white'}`}>
-                    CLI {item.cli.available ? 'OK' : '缺失'}
-                  </span>
-                  <span className={`border-2 border-pixel-black px-2 py-1 font-pixel text-xs ${item.provider.configuredCount > 0 || item.provider.envConfigured ? 'bg-pixel-green text-pixel-white' : 'bg-pixel-gray text-pixel-white'}`}>
-                    供应商 {item.provider.configuredCount || (item.provider.envConfigured ? 'ENV' : 0)}
-                  </span>
-                </div>
-                {item.cli.version && (
-                  <p className="mt-2 truncate font-mono text-[11px] text-pixel-black/45">{item.cli.version}</p>
-                )}
-                <div className="mt-2 space-y-1 border-t-2 border-pixel-black/10 pt-2">
-                  <p className="truncate font-mono text-[11px] text-pixel-black/45" title={item.cli.displayCommand}>
-                    {item.cli.displayCommand}
-                  </p>
-                  {item.cli.usesWsl && (
-                    <p className="font-pixel text-[10px] text-pixel-black/50">通过 WSL 检查 Linux 侧 CLI</p>
-                  )}
-                  {!item.cli.available && (item.cli.errorCode || item.cli.errorName || item.cli.errorMessage || item.cli.stderr) && (
-                    <p className="font-mono text-[11px] leading-snug text-pixel-red">
-                      {[item.cli.errorCode, item.cli.errorName].filter(Boolean).join(' · ')}
-                      {(item.cli.errorCode || item.cli.errorName) && (item.cli.errorMessage || item.cli.stderr) ? '：' : ''}
-                      {item.cli.stderr || item.cli.errorMessage}
-                    </p>
-                  )}
-                </div>
-                {item.issues.length > 0 && (
-                  <p className="mt-2 font-pixel text-xs leading-snug text-pixel-black/65">
-                    {item.issues[0]} {item.installHint}
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
-        </>
-      ) : (
-        <div className="border-2 border-pixel-black bg-pixel-black/5 px-3 py-6 text-center font-pixel text-sm text-pixel-black/50">
-          {loading ? '正在检查运行时...' : '暂无预检结果'}
-        </div>
-      )}
-    </motion.div>
-  );
-}
-
 export default function ProviderSettingsPage() {
   const { token } = useAuthStore();
   const [activeTab, setActiveTab] = useState<ProviderType>('claude');
@@ -211,9 +86,6 @@ export default function ProviderSettingsPage() {
   const [copyTargetTypes, setCopyTargetTypes] = useState<ProviderType[]>([]);
   const [copying, setCopying] = useState(false);
   const [copyError, setCopyError] = useState('');
-  const [runtimeHealth, setRuntimeHealth] = useState<RuntimeHealth | null>(null);
-  const [runtimeLoading, setRuntimeLoading] = useState(true);
-  const [runtimeError, setRuntimeError] = useState('');
 
   const tabPresets = useMemo(() => getPresetsForType(activeTab), [activeTab]);
   const selectedPreset = getPresetByKey(selectedPresetKey) || tabPresets[0];
@@ -223,20 +95,7 @@ export default function ProviderSettingsPage() {
 
   useEffect(() => {
     fetchProviders();
-    void refreshRuntimeHealth();
   }, []);
-
-  const refreshRuntimeHealth = async () => {
-    setRuntimeLoading(true);
-    setRuntimeError('');
-    try {
-      setRuntimeHealth(await fetchRuntimeHealth());
-    } catch (error) {
-      setRuntimeError(error instanceof Error ? error.message : '运行时预检失败');
-    } finally {
-      setRuntimeLoading(false);
-    }
-  };
 
   const fetchProviders = async () => {
     setLoading(true);
@@ -437,13 +296,6 @@ export default function ProviderSettingsPage() {
           先选择 Agent 平台，再从常用官方供应商卡片里创建可用的 API Key、Base URL 和模型集合。
         </p>
       </motion.div>
-
-      <RuntimeHealthPanel
-        health={runtimeHealth}
-        loading={runtimeLoading}
-        error={runtimeError}
-        onRefresh={() => void refreshRuntimeHealth()}
-      />
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}

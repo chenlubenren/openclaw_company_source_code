@@ -6,6 +6,8 @@ const html = fs.readFileSync(path.join(root, 'src', 'renderer', 'index.html'), '
 const css = fs.readFileSync(path.join(root, 'src', 'renderer', 'styles.css'), 'utf8');
 const app = fs.readFileSync(path.join(root, 'src', 'renderer', 'app.js'), 'utf8');
 const scanner = fs.readFileSync(path.join(root, 'src', 'local-agent-scanner.cjs'), 'utf8');
+const main = fs.readFileSync(path.join(root, 'src', 'main.cjs'), 'utf8');
+const preload = fs.readFileSync(path.join(root, 'src', 'preload.cjs'), 'utf8');
 
 function assert(condition, message) {
   if (!condition) {
@@ -50,6 +52,10 @@ includesAll(html, [
   'id="auth-token"',
   'id="import-agent"',
   'id="import-status"',
+  'id="official-adopt-modal"',
+  'class="official-adopt-card"',
+  '../../../next-lobster-platform/public/claw_profile/03.png',
+  'id="official-adopt-submit"',
 ], 'renderer html');
 
 includesAll(css, [
@@ -67,6 +73,12 @@ includesAll(css, [
   '.runtime-card',
   '.runtime-badge',
   '.form-grid',
+  '.official-adopt-modal',
+  'align-items: center',
+  '.official-adopt-card',
+  'width: min(760px, 100%)',
+  'background: var(--white)',
+  '@keyframes official-adopt-scale',
 ], 'renderer css');
 
 includesAll(app, [
@@ -80,7 +92,28 @@ includesAll(app, [
   'renderRuntimeHealth',
   'deferMarketPublish',
   'localStorage',
+  '/api/agents/official-lobster/adopt',
+  'OFFICIAL_ADOPT_PROMPT_STORAGE_KEY',
+  'adoptOfficialLobsterFromDesktop',
 ], 'renderer app');
+
+includesAll(main, [
+  "process.env.OPENCLAW_DESKTOP_WEB_URL || 'http://127.0.0.1:3000'",
+  'OPENCLAW_DESKTOP_LEGACY_RENDERER',
+  'did-fail-load',
+], 'main process web shell');
+
+includesAll(preload, [
+  'isDesktop: true',
+  'scanLocalAgents',
+  'readLocalAgentFolder',
+  'listLocalAgents',
+  'importLocalAgent',
+  'listLocalProjects',
+  'createLocalProject',
+  'readLocalProjectTree',
+  'readLocalProjectFile',
+], 'preload desktop bridge');
 
 matchesAll(app, [
   /selectedFolder\s*=\s*await\s+window\.openclawDesktop\.readLocalAgentFolder\(agent\.path\)/,
@@ -114,4 +147,6 @@ console.log(JSON.stringify({
   localImportPayloadVerified: true,
   scannerUploadFilteringVerified: true,
   runtimeHealthPanel: true,
+  unifiedWebShell: true,
+  desktopBridgeMarker: true,
 }, null, 2));

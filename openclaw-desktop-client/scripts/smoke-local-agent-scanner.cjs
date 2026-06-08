@@ -19,23 +19,29 @@ function assert(condition, message) {
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openclaw-desktop-scan-'));
 
 try {
-  write(path.join(root, 'Desktop', 'claude-agent', 'CLAUDE.md'), '# Claude agent');
-  write(path.join(root, 'Documents', 'codex-agent', 'AGENTS.md'), '[codex]\nOpenAI Codex project');
-  write(path.join(root, 'Downloads', 'opencode-agent', 'opencode.json'), '{}');
-  write(path.join(root, '.hermes', 'hermes-agent', 'hermes.yaml'), 'name: hermes');
+  write(path.join(root, '.claude', 'settings.json'), '{}');
+  write(path.join(root, '.claude', 'agents', 'helper.md'), '# Claude agent');
+  write(path.join(root, '.codex', 'config.toml'), 'model = "gpt-5"');
+  write(path.join(root, '.codex', 'AGENTS.md'), '[codex]\nOpenAI Codex project');
+  write(path.join(root, 'opencode', 'opencode.json'), '{}');
+  write(path.join(root, 'opencode', 'agents', 'worker.md'), '# OpenCode agent');
+  write(path.join(root, '.hermes', 'hermes.yaml'), 'name: hermes');
+  write(path.join(root, '.hermes', 'memories', 'memo.md'), '# Memory');
   write(path.join(root, '.openclaw', 'workspace-main', 'SOUL.md'), '# Soul');
   write(path.join(root, '.openclaw', 'workspace-main', 'agent.manifest.json'), '{"entrypoint":{"type":"openclaw"}}');
-  write(path.join(root, 'data', 'workspaces', 'users', 'user-a', 'agents', 'agent-a', 'workspace', 'SOUL.md'), '# Nested OpenClaw');
-  write(path.join(root, 'data', 'workspaces', 'users', 'user-a', 'agents', 'agent-a', 'workspace', 'IDENTITY.md'), '# Identity');
-  write(path.join(root, 'data', 'workspaces', 'users', 'user-a', 'agents', 'agent-a', 'workspace', 'skills', 'demo', 'SKILL.md'), '# Demo skill');
-  write(path.join(root, 'data', 'workspaces', 'users', 'user-a', 'agents', 'agent-a', 'workspace', '.env'), 'OPENAI_API_KEY=secret');
-  write(path.join(root, 'data', 'workspaces', 'users', 'user-a', 'agents', 'agent-a', 'workspace', '.env.local'), 'ANTHROPIC_API_KEY=secret');
-  write(path.join(root, 'data', 'workspaces', 'users', 'user-a', 'agents', 'agent-a', 'workspace', 'agent.config.json'), '{"apiKey":"secret"}');
-  write(path.join(root, 'data', 'workspaces', 'users', 'user-a', 'agents', 'agent-a', 'workspace', '.openclaw', 'auth-profiles.json'), '{"profiles":["secret"]}');
-  write(path.join(root, 'data', 'workspaces', 'users', 'user-a', 'agents', 'agent-a', 'workspace', '.openclaw', 'agents', 'agent-a', 'sessions', 'session.jsonl'), 'secret session');
-  write(path.join(root, 'data', 'workspaces', 'users', 'user-a', 'agents', 'agent-a', 'workspace', '.codex', 'auth.json'), '{"token":"secret"}');
-  write(path.join(root, 'data', 'workspaces', 'users', 'user-a', 'agents', 'agent-a', 'workspace', '.claude', 'settings.local.json'), '{"apiKey":"secret"}');
-  write(path.join(root, 'data', 'workspaces', 'users', 'user-a', 'agents', 'agent-a', 'workspace', '.claude', 'agents', 'helper.md'), '# Helper');
+  write(path.join(root, 'openclaw', 'workspaces', 'workspace-extra', 'SOUL.md'), '# Extra Soul');
+  write(path.join(root, 'openclaw', 'workspaces', 'workspace-extra', 'agent.manifest.json'), '{"entrypoint":{"type":"openclaw"}}');
+  write(path.join(root, '.openclaw', 'data', 'workspaces', 'users', 'user-a', 'agents', 'agent-a', 'workspace', 'SOUL.md'), '# Nested OpenClaw');
+  write(path.join(root, '.openclaw', 'data', 'workspaces', 'users', 'user-a', 'agents', 'agent-a', 'workspace', 'IDENTITY.md'), '# Identity');
+  write(path.join(root, '.openclaw', 'data', 'workspaces', 'users', 'user-a', 'agents', 'agent-a', 'workspace', 'skills', 'demo', 'SKILL.md'), '# Demo skill');
+  write(path.join(root, '.openclaw', 'data', 'workspaces', 'users', 'user-a', 'agents', 'agent-a', 'workspace', '.env'), 'OPENAI_API_KEY=secret');
+  write(path.join(root, '.openclaw', 'data', 'workspaces', 'users', 'user-a', 'agents', 'agent-a', 'workspace', '.env.local'), 'ANTHROPIC_API_KEY=secret');
+  write(path.join(root, '.openclaw', 'data', 'workspaces', 'users', 'user-a', 'agents', 'agent-a', 'workspace', 'agent.config.json'), '{"apiKey":"secret"}');
+  write(path.join(root, '.openclaw', 'data', 'workspaces', 'users', 'user-a', 'agents', 'agent-a', 'workspace', '.openclaw', 'auth-profiles.json'), '{"profiles":["secret"]}');
+  write(path.join(root, '.openclaw', 'data', 'workspaces', 'users', 'user-a', 'agents', 'agent-a', 'workspace', '.openclaw', 'agents', 'agent-a', 'sessions', 'session.jsonl'), 'secret session');
+  write(path.join(root, '.openclaw', 'data', 'workspaces', 'users', 'user-a', 'agents', 'agent-a', 'workspace', '.codex', 'auth.json'), '{"token":"secret"}');
+  write(path.join(root, '.openclaw', 'data', 'workspaces', 'users', 'user-a', 'agents', 'agent-a', 'workspace', '.claude', 'settings.local.json'), '{"apiKey":"secret"}');
+  write(path.join(root, '.openclaw', 'data', 'workspaces', 'users', 'user-a', 'agents', 'agent-a', 'workspace', '.claude', 'agents', 'helper.md'), '# Helper');
 
   const result = scanLocalAgents({ homeDir: root });
   const types = new Set(result.agents.map((agent) => agent.type));
@@ -45,7 +51,7 @@ try {
 
   const openclawNested = result.agents.find((agent) =>
     agent.type === 'openclaw' &&
-    agent.path.replace(/\\/g, '/').endsWith('/data/workspaces/users/user-a/agents/agent-a/workspace')
+    agent.path.replace(/\\/g, '/').endsWith('/.openclaw/data/workspaces/users/user-a/agents/agent-a/workspace')
   );
   assert(openclawNested, 'Expected scanner to recognize nested OpenClaw backend workspace layout.');
 

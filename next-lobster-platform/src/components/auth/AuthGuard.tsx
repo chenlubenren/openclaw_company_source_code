@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useOpenClawDesktopBridge } from '@/lib/desktop';
 
 const PUBLIC_PATHS = ['/', '/auth/login', '/auth/register'];
 
@@ -15,15 +16,35 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { token, hasHydrated } = useAuthStore();
+  const desktopBridge = useOpenClawDesktopBridge();
+  const isDesktop = Boolean(desktopBridge);
   const isPublic = PUBLIC_PATHS.some(
     (p) => pathname === p || pathname.startsWith('/auth/')
   );
 
   useEffect(() => {
+    if (isDesktop) return;
     if (!isPublic && hasHydrated && !token) {
       router.replace('/auth/login');
     }
-  }, [token, hasHydrated, isPublic, router]);
+  }, [token, hasHydrated, isPublic, isDesktop, router]);
+
+  useEffect(() => {
+    if (isDesktop && pathname.startsWith('/auth/')) {
+      router.replace('/');
+    }
+  }, [isDesktop, pathname, router]);
+
+  if (isDesktop) {
+    if (pathname.startsWith('/auth/')) {
+      return (
+        <div className="flex min-h-[60vh] items-center justify-center text-center">
+          <p className="font-pixel text-sm text-pixel-black/50">Opening local desktop mode...</p>
+        </div>
+      );
+    }
+    return <>{children}</>;
+  }
 
   if (isPublic) {
     return <>{children}</>;

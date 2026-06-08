@@ -3,8 +3,8 @@ const path = require('node:path');
 const os = require('node:os');
 
 const AGENT_TYPES = ['claude-code', 'codex', 'opencode', 'hermes', 'openclaw'];
-const DEFAULT_MAX_DEPTH = 8;
-const DEFAULT_MAX_SCANNED_DIRS = 5000;
+const DEFAULT_MAX_DEPTH = 5;
+const DEFAULT_MAX_SCANNED_DIRS = 1200;
 const DEFAULT_MAX_CANDIDATES = 200;
 const DEFAULT_MAX_FILES = 1000;
 const DEFAULT_MAX_BYTES = 200 * 1024 * 1024;
@@ -24,6 +24,10 @@ const SKIP_DIR_NAMES = new Set([
   '.npm',
   '.pnpm-store',
   '.yarn',
+  'sessions',
+  'todos',
+  'history',
+  'logs',
 ]);
 
 const UPLOAD_SKIP_DIR_NAMES = new Set([
@@ -45,7 +49,9 @@ const SENSITIVE_UPLOAD_PATH_PATTERNS = [
   /(^|\/)\.env($|[./])/i,
   /(^|\/)(id_rsa|id_ed25519|id_ecdsa|.*\.(pem|key|p12|pfx|pkcs8))$/i,
   /(^|\/)(secrets?|credentials?|tokens?|api[_-]?keys?)\.(json|ya?ml|toml|ini|env|txt)$/i,
+  /(^|\/)(auth|credentials)\.(json|toml)$/i,
   /(^|\/)agent\.config\.json$/i,
+  /(^|\/)settings\.local\.json$/i,
   /(^|\/)\.openclaw($|\/)/i,
   /(^|\/)auth-profiles\.json$/i,
   /(^|\/)\.codex\/(auth|credentials)\.(json|toml)$/i,
@@ -101,6 +107,10 @@ function hasAnyFile(dirPath, names) {
 
 function scoreClaude(dirPath) {
   const hits = [];
+  if (path.basename(dirPath).toLowerCase() === '.claude') hits.push('home .claude folder');
+  if (exists(path.join(dirPath, 'settings.json'))) hits.push('settings.json');
+  if (exists(path.join(dirPath, 'agents'))) hits.push('agents/');
+  if (exists(path.join(dirPath, 'skills'))) hits.push('skills/');
   if (exists(path.join(dirPath, '.claude'))) hits.push('.claude/');
   if (exists(path.join(dirPath, '.claude', 'settings.json'))) hits.push('.claude/settings.json');
   if (exists(path.join(dirPath, 'CLAUDE.md'))) hits.push('CLAUDE.md');
@@ -111,6 +121,9 @@ function scoreClaude(dirPath) {
 
 function scoreCodex(dirPath) {
   const hits = [];
+  if (path.basename(dirPath).toLowerCase() === '.codex') hits.push('home .codex folder');
+  if (exists(path.join(dirPath, 'config.toml'))) hits.push('config.toml');
+  if (exists(path.join(dirPath, 'AGENTS.md'))) hits.push('AGENTS.md');
   if (exists(path.join(dirPath, '.codex'))) hits.push('.codex/');
   if (exists(path.join(dirPath, 'codex.toml'))) hits.push('codex.toml');
   if (exists(path.join(dirPath, 'codex.json'))) hits.push('codex.json');
@@ -122,15 +135,22 @@ function scoreCodex(dirPath) {
 
 function scoreOpenCode(dirPath) {
   const hits = [];
+  const baseName = path.basename(dirPath).toLowerCase();
+  if (baseName === 'opencode' || baseName === '.opencode') hits.push('home opencode folder');
+  if (exists(path.join(dirPath, 'agents'))) hits.push('agents/');
+  if (exists(path.join(dirPath, 'config.json'))) hits.push('config.json');
   if (exists(path.join(dirPath, '.opencode'))) hits.push('.opencode/');
   if (exists(path.join(dirPath, '.opencode', 'agents'))) hits.push('.opencode/agents/');
   if (exists(path.join(dirPath, 'opencode.json'))) hits.push('opencode.json');
-  if (path.basename(dirPath).toLowerCase() === 'opencode') hits.push('folder name opencode');
+  if (baseName === 'opencode') hits.push('folder name opencode');
   return { score: hits.length ? hits.length * 4 : 0, hits };
 }
 
 function scoreHermes(dirPath) {
   const hits = [];
+  if (path.basename(dirPath).toLowerCase() === '.hermes') hits.push('home .hermes folder');
+  if (exists(path.join(dirPath, 'memories'))) hits.push('memories/');
+  if (exists(path.join(dirPath, 'cron'))) hits.push('cron/');
   if (exists(path.join(dirPath, '.hermes'))) hits.push('.hermes/');
   if (exists(path.join(dirPath, '.hermes', 'memories'))) hits.push('.hermes/memories/');
   if (exists(path.join(dirPath, '.hermes', 'cron'))) hits.push('.hermes/cron/');
@@ -154,11 +174,14 @@ function scoreOpenClaw(dirPath) {
   }
 
   const normalized = normalize(dirPath).toLowerCase();
-  if (/\/data\/workspaces\/users\/[^/]+\/agents\/[^/]+\/workspace$/.test(normalized)) {
+  if (/\/(openclaw|\.openclaw)\/data\/workspaces\/users\/[^/]+\/agents\/[^/]+\/workspace$/.test(normalized)) {
     hits.push('openclaw backend workspace layout');
   }
-  if (/\/\.openclaw\/workspace[^/]*$/.test(normalized)) {
+  if (/\/(\.openclaw|openclaw)\/workspace[^/]*$/.test(normalized)) {
     hits.push('home .openclaw workspace layout');
+  }
+  if (/\/(\.openclaw|openclaw)\/workspaces\/[^/]+$/.test(normalized)) {
+    hits.push('home openclaw workspaces layout');
   }
   if (exists(path.join(dirPath, '.openclaw')) && hits.length > 0) {
     hits.push('.openclaw runtime state');
@@ -203,15 +226,11 @@ function detectAgentWorkspace(dirPath) {
 
 function candidateRoots(homeDir) {
   const roots = [
-    homeDir,
-    path.join(homeDir, 'Desktop'),
-    path.join(homeDir, 'Documents'),
-    path.join(homeDir, 'Downloads'),
     path.join(homeDir, '.claude'),
     path.join(homeDir, '.codex'),
-    path.join(homeDir, '.opencode'),
     path.join(homeDir, '.hermes'),
-    path.join(homeDir, '.openclaw'),
+    path.join(homeDir, 'opencode'),
+    path.join(homeDir, '.opencode'),
   ];
   return Array.from(new Set(roots.filter(isDirectory)));
 }
@@ -228,10 +247,40 @@ function shouldSkipDir(dirent, parentPath) {
 
 function collectOpenClawSpecialRoots(homeDir) {
   const roots = [];
-  const openclawRoot = path.join(homeDir, '.openclaw');
-  for (const entry of listDirSafe(openclawRoot)) {
-    if (entry.isDirectory() && entry.name.toLowerCase().startsWith('workspace')) {
-      roots.push(path.join(openclawRoot, entry.name));
+  for (const rootName of ['.openclaw', 'openclaw']) {
+    const openclawRoot = path.join(homeDir, rootName);
+    for (const entry of listDirSafe(openclawRoot)) {
+      if (!entry.isDirectory()) continue;
+      const lower = entry.name.toLowerCase();
+      if (lower === 'workspaces') {
+        for (const workspaceEntry of listDirSafe(path.join(openclawRoot, entry.name))) {
+          if (workspaceEntry.isDirectory()) {
+            roots.push(path.join(openclawRoot, entry.name, workspaceEntry.name));
+          }
+        }
+        continue;
+      }
+      if (lower.startsWith('workspace')) {
+        roots.push(path.join(openclawRoot, entry.name));
+      }
+      if (lower === 'data') {
+        roots.push(...collectBackendWorkspaceRoots(path.join(openclawRoot, entry.name)));
+      }
+    }
+  }
+  return roots;
+}
+
+function collectBackendWorkspaceRoots(dataRoot) {
+  const roots = [];
+  const usersRoot = path.join(dataRoot, 'workspaces', 'users');
+  for (const userEntry of listDirSafe(usersRoot)) {
+    if (!userEntry.isDirectory()) continue;
+    const agentsRoot = path.join(usersRoot, userEntry.name, 'agents');
+    for (const agentEntry of listDirSafe(agentsRoot)) {
+      if (!agentEntry.isDirectory()) continue;
+      const workspacePath = path.join(agentsRoot, agentEntry.name, 'workspace');
+      if (isDirectory(workspacePath)) roots.push(workspacePath);
     }
   }
   return roots;

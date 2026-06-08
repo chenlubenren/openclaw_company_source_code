@@ -70,6 +70,12 @@ interface PlatformConfig {
   baseUrlEnv?: string;
 }
 
+interface CommandInvocation {
+  command: string;
+  args: string[];
+  shell: boolean;
+}
+
 export interface ProviderConfig {
   apiKey: string;
   baseUrl?: string;
@@ -82,6 +88,15 @@ export interface ProviderConfig {
 const isWindows = os.platform() === 'win32';
 const OPENCLAW_PROXY_PROVIDER_ID = 'openclaw_proxy';
 const OPENCLAW_MESSAGE_ARG_PLACEHOLDER = '__OPENCLAW_RUNTIME_MESSAGE__';
+
+function buildOpenClawSessionId(agentId: string, sessionId: string): string {
+  const digest = crypto
+    .createHash('sha256')
+    .update(`${agentId}:${sessionId}`)
+    .digest('hex')
+    .slice(0, 32);
+  return `agent-${digest}`;
+}
 
 function isWindowsDrivePath(filePath: string): boolean {
   return /^[A-Za-z]:[\\/]/.test(filePath);
@@ -132,6 +147,11 @@ function toWslPath(filePath: string): string {
     : resolvedPath.replace(/\\/g, '/');
 }
 
+function getOpenClawRuntimePath(filePath: string): string {
+  const resolvedPath = resolveHostPath(filePath);
+  return isWindows ? resolvedPath : toWslPath(resolvedPath);
+}
+
 function shellQuote(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`;
 }
@@ -140,6 +160,103 @@ function displayShellArg(value: string): string {
   return /^[A-Za-z0-9_./:=@+-]+$/.test(value)
     ? value
     : `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+}
+
+function getPathEnvValue(): string {
+  const pathKey = Object.keys(process.env).find((key) => key.toLowerCase() === 'path');
+  return pathKey ? process.env[pathKey] || '' : process.env.PATH || '';
+}
+
+function findExistingExecutable(candidates: string[]): string | undefined {
+  return candidates.find((candidate) => {
+    try {
+      return fs.existsSync(candidate) && fs.statSync(candidate).isFile();
+    } catch {
+      return false;
+    }
+  });
+}
+
+function getWindowsCommandSearchDirs(): string[] {
+  const appData = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
+  return [
+    path.join(appData, 'npm'),
+    ...getPathEnvValue().split(path.delimiter).filter(Boolean),
+  ];
+}
+
+function resolveWindowsCommandPath(command: string): string | undefined {
+  if (!isWindows) return undefined;
+  if (path.isAbsolute(command)) {
+    return findExistingExecutable([command]);
+  }
+
+  const extension = path.extname(command);
+  const extensions = extension ? [''] : ['.cmd', '.exe', '.bat', ''];
+  const candidates = getWindowsCommandSearchDirs().flatMap((dir) =>
+    extensions.map((suffix) => path.join(dir, `${command}${suffix}`))
+  );
+  return findExistingExecutable(candidates);
+}
+
+function getWindowsNpmCommand(commandName: string): string {
+  if (!isWindows) return commandName;
+
+  const extensions = ['.cmd', '.exe', '.bat', ''];
+  const searchDirs = getWindowsCommandSearchDirs();
+  const candidates = searchDirs.flatMap((dir) =>
+    extensions.map((extension) => path.join(dir, `${commandName}${extension}`))
+  );
+
+  return findExistingExecutable(candidates) || `${commandName}.cmd`;
+}
+
+function isWindowsCommandScript(command: string): boolean {
+  return isWindows && /\.(?:cmd|bat)$/i.test(command);
+}
+
+function resolveNpmCommandShim(command: string): { scriptPath: string } | null {
+  const commandPath = resolveWindowsCommandPath(command);
+  if (!commandPath || !isWindowsCommandScript(commandPath)) {
+    return null;
+  }
+
+  try {
+    const content = fs.readFileSync(commandPath, 'utf-8');
+    const match = content.match(/"%_prog%"\s+"%dp0%\\([^"]+)"\s+%\*/i);
+    if (!match?.[1]) return null;
+
+    const scriptPath = path.resolve(path.dirname(commandPath), match[1].replace(/\//g, '\\'));
+    return fs.existsSync(scriptPath) ? { scriptPath } : null;
+  } catch {
+    return null;
+  }
+}
+
+function resolveCommandInvocation(command: string, args: string[]): CommandInvocation {
+  const commandPath = resolveWindowsCommandPath(command) || command;
+  const npmShim = resolveNpmCommandShim(command);
+  if (npmShim) {
+    return {
+      command: process.execPath,
+      args: [npmShim.scriptPath, ...args],
+      shell: false,
+    };
+  }
+
+  return {
+    command: commandPath,
+    args,
+    shell: isWindowsCommandScript(commandPath),
+  };
+}
+
+function getOpenClawCommand(): string {
+  return isWindows ? getWindowsNpmCommand('openclaw') : 'openclaw';
+}
+
+function getOpenCodeCommand(): string {
+  return isWindows ? getWindowsNpmCommand('opencode') : 'opencode';
 }
 
 function getOpenClawStateDir(workspacePath: string, providerConfig?: ProviderConfig): string {
@@ -197,7 +314,7 @@ function prepareOpenClawProviderConfig(workspacePath: string, providerConfig?: P
   const config = {
     agents: {
       defaults: {
-        workspace: toWslPath(workspacePath),
+        workspace: getOpenClawRuntimePath(workspacePath),
         model: {
           primary: `${OPENCLAW_PROXY_PROVIDER_ID}/${model}`,
         },
@@ -283,9 +400,7 @@ function buildOpenClawShellScript(
 }
 
 function getBashLauncher(script: string): { command: string; args: string[] } {
-  return isWindows
-    ? { command: 'wsl', args: ['bash', '-lc', script] }
-    : { command: 'bash', args: ['-lc', script] };
+  return { command: 'bash', args: ['-lc', script] };
 }
 
 function getClaudeCommand(): string {
@@ -478,6 +593,50 @@ function buildOpenClawFileMessageCommand(args: string[], messagePath: string): s
   ].join('\n');
 }
 
+function buildOpenClawNativeArgs(args: string[], messagePath: string): string[] {
+  const nativeArgs = [...args];
+  const messageIndex = nativeArgs.indexOf(OPENCLAW_MESSAGE_ARG_PLACEHOLDER);
+  if (messageIndex === -1) {
+    throw new Error('Missing OpenClaw runtime message placeholder.');
+  }
+  nativeArgs[messageIndex] = fs.readFileSync(messagePath, 'utf-8');
+  return nativeArgs;
+}
+
+function buildOpenClawEnv(
+  workspacePath: string,
+  providerConfig?: ProviderConfig,
+  messagePath?: string
+): Record<string, string> {
+  const env = getStringEnv();
+  const workspace = getOpenClawRuntimePath(workspacePath);
+  const stateDir = getOpenClawRuntimePath(getOpenClawStateDir(workspacePath, providerConfig));
+  const configPath = getOpenClawRuntimePath(getOpenClawConfigPath(workspacePath, providerConfig));
+  const apiKey = providerConfig?.apiKey || process.env.OPENCLAW_API_KEY || process.env.OPENAI_API_KEY || '';
+  const baseUrl = providerConfig?.baseUrl || process.env.OPENCLAW_BASE_URL || process.env.OPENAI_BASE_URL || '';
+
+  env.OPENCLAW_WORKSPACE_DIR = workspace;
+  env.OPENCLAW_WORKSPACE = workspace;
+  env.OPENCLAW_STATE_DIR = stateDir;
+  env.OPENCLAW_CONFIG_PATH = configPath;
+
+  if (messagePath) {
+    env.OPENCLAW_RUNTIME_MESSAGE_FILE = getOpenClawRuntimePath(messagePath);
+  }
+
+  if (apiKey) {
+    env.OPENCLAW_API_KEY = apiKey;
+    env.OPENAI_API_KEY = apiKey;
+  }
+
+  if (baseUrl) {
+    env.OPENCLAW_BASE_URL = baseUrl;
+    env.OPENAI_BASE_URL = baseUrl;
+  }
+
+  return env;
+}
+
 const PLATFORM_CONFIGS: Record<AgentPlatform, PlatformConfig> = {
   'claude-code': {
     command: getClaudeCommand(),
@@ -490,54 +649,23 @@ const PLATFORM_CONFIGS: Record<AgentPlatform, PlatformConfig> = {
     baseUrlEnv: 'ANTHROPIC_BASE_URL',
   },
   'openclaw': {
-    command: isWindows ? 'wsl' : 'bash',
+    command: isWindows ? getOpenClawCommand() : 'bash',
     args: (workspace, providerConfig) => {
+      if (isWindows) {
+        return ['tui', '--local', '--session', 'main'];
+      }
+
       const script = buildOpenClawShellScript(
         workspace,
         providerConfig,
         'exec openclaw tui --local --session main'
       );
-      return isWindows ? ['bash', '-lc', script] : ['-lc', script];
-
-      // 转换 Windows 路径为 WSL 路径格式
-      // J:\path -> /mnt/j/path
-      const wslWorkspace = workspace
-        .replace(/^([A-Za-z]):/, (_match, letter) => `/mnt/${String(letter).toLowerCase()}`)
-        .replace(/\\/g, '/');
-
-      const apiKey = providerConfig?.apiKey || process.env.OPENCLAW_API_KEY || '';
-      const baseUrl = providerConfig?.baseUrl || '';
-
-      // Optional: per-agent isolated state dir
-      const stateDir = providerConfig?.stateDir || process.env.OPENCLAW_STATE_DIR || '';
-      const stateDirStr = typeof stateDir === 'string' ? stateDir : '';
-      const wslStateDir = stateDirStr
-        ? stateDirStr
-            .replace(/^([A-Za-z]):/, (_match, letter) => `/mnt/${String(letter).toLowerCase()}`)
-            .replace(/\\/g, '/')
-        : '';
-
-      // 完整的 openclaw 启动流程：
-      // 1. 启动 gateway
-      // 2. 等待网关就绪
-      // 3. 切换到 workspace 目录
-      // 4. 启动 tui（会自动使用当前目录作为 workspace）
-      return [
-        'bash', '-c',
-        `export OPENCLAW_API_KEY=\"${apiKey}\" && ` +
-        (baseUrl ? `export OPENCLAW_BASE_URL=\"${baseUrl}\" && ` : '') +
-        (wslStateDir ? `export OPENCLAW_STATE_DIR=\"${wslStateDir}\" && ` : '') +
-        `openclaw gateway & ` +
-        `sleep 4 && ` +
-        `cd \"${wslWorkspace}\" && ` +
-        `openclaw tui`
-      ];
+      return ['-lc', script];
     },
     interactive: true,
     workspaceEnv: 'OPENCLAW_WORKSPACE_DIR',
-    checkCommand: isWindows ? 'wsl' : 'openclaw',
+    checkCommand: getOpenClawCommand(),
     versionFlag: '--version',
-    useShell: false,
     apiKeyEnv: 'OPENCLAW_API_KEY',
     baseUrlEnv: 'OPENCLAW_BASE_URL',
   },
@@ -561,10 +689,10 @@ const PLATFORM_CONFIGS: Record<AgentPlatform, PlatformConfig> = {
     apiKeyEnv: 'HERMES_API_KEY',
   },
   'opencode': {
-    command: 'opencode',
+    command: getOpenCodeCommand(),
     args: () => ['--print'],
     interactive: false,
-    checkCommand: 'opencode',
+    checkCommand: getOpenCodeCommand(),
     versionFlag: '--version',
     usePrintMode: true,
     apiKeyEnv: 'OPENAI_API_KEY',
@@ -574,14 +702,6 @@ const PLATFORM_CONFIGS: Record<AgentPlatform, PlatformConfig> = {
 
 function getCliHealthInvocation(platform: AgentPlatform): { command: string; args: string[]; usesWsl: boolean } {
   const config = PLATFORM_CONFIGS[platform];
-  if (platform === 'openclaw' && isWindows) {
-    return {
-      command: 'wsl',
-      args: ['bash', '-lc', 'command -v openclaw >/dev/null && openclaw --version'],
-      usesWsl: true,
-    };
-  }
-
   return {
     command: config.checkCommand,
     args: [config.versionFlag],
@@ -642,13 +762,15 @@ class AgentRunner extends EventEmitter {
 
   async checkCliAvailable(platform: AgentPlatform): Promise<CliHealthCheck> {
     const invocation = getCliHealthInvocation(platform);
+    const resolvedInvocation = resolveCommandInvocation(invocation.command, invocation.args);
 
     try {
-      const output = execFileSync(invocation.command, invocation.args, {
+      const output = execFileSync(resolvedInvocation.command, resolvedInvocation.args, {
         encoding: 'utf-8',
         timeout: 5000,
         stdio: ['pipe', 'pipe', 'pipe'],
         env: getStringEnv(),
+        shell: resolvedInvocation.shell,
       });
       return buildCliHealthResult(invocation, {
         available: true,
@@ -693,10 +815,16 @@ class AgentRunner extends EventEmitter {
     const trimmed = rawOutput.trim();
     if (!trimmed) return '';
 
-    const candidates = [trimmed, ...trimmed.split(/\r?\n/).reverse()];
+    const candidates = [
+      trimmed,
+      ...this.extractEmbeddedJsonCandidates(trimmed),
+      ...trimmed.split(/\r?\n/).reverse(),
+    ];
     for (const candidate of candidates) {
       try {
         const parsed: unknown = JSON.parse(candidate);
+        const payloadText = this.findOpenClawPayloadText(parsed);
+        if (payloadText) return payloadText;
         const text = this.findStringField(parsed, [
           'content',
           'message',
@@ -713,6 +841,49 @@ class AgentRunner extends EventEmitter {
     }
 
     return trimmed;
+  }
+
+  private extractEmbeddedJsonCandidates(text: string): string[] {
+    const candidates: string[] = [];
+    const objectStart = text.indexOf('{');
+    const objectEnd = text.lastIndexOf('}');
+    if (objectStart >= 0 && objectEnd > objectStart) {
+      candidates.push(text.slice(objectStart, objectEnd + 1).trim());
+    }
+
+    const arrayStart = text.indexOf('[');
+    const arrayEnd = text.lastIndexOf(']');
+    if (arrayStart >= 0 && arrayEnd > arrayStart) {
+      candidates.push(text.slice(arrayStart, arrayEnd + 1).trim());
+    }
+
+    return Array.from(new Set(candidates.filter((candidate) => candidate && candidate !== text)));
+  }
+
+  private findOpenClawPayloadText(value: unknown): string | null {
+    if (!value || typeof value !== 'object') return null;
+
+    const record = value as Record<string, unknown>;
+    const payloads = Array.isArray(record.payloads)
+      ? record.payloads
+      : record.result && typeof record.result === 'object' && Array.isArray((record.result as Record<string, unknown>).payloads)
+        ? (record.result as Record<string, unknown>).payloads as unknown[]
+        : null;
+
+    if (!payloads) return null;
+
+    const parts = payloads
+      .map((payload) => this.findStringField(payload, [
+        'text',
+        'content',
+        'message',
+        'reply',
+        'response',
+        'output',
+      ]))
+      .filter((part): part is string => Boolean(part?.trim()));
+
+    return parts.length > 0 ? parts.join('\n').trim() : null;
   }
 
   private findStringField(value: unknown, keys: string[]): string | null {
@@ -860,11 +1031,12 @@ class AgentRunner extends EventEmitter {
       let output = '';
       let errorOutput = '';
 
-      const childProcess = spawn(config.command, args, {
+      const invocation = resolveCommandInvocation(config.command, args);
+      const childProcess = spawn(invocation.command, invocation.args, {
         cwd: session.workspacePath,
         env,
         stdio: ['pipe', 'pipe', 'pipe'],
-        shell: config.useShell ?? false,
+        shell: config.useShell ?? invocation.shell,
       });
 
       session.process = childProcess;
@@ -903,26 +1075,18 @@ class AgentRunner extends EventEmitter {
 
   private executeOpenClawTurn(session: AgentSession, message: string, timeoutMs = 300000): Promise<string> {
     const providerConfig = session.providerConfig;
-    const sessionKey = `agent:${session.agentId}:${session.sessionId}`;
+    const sessionId = buildOpenClawSessionId(session.agentId, session.sessionId);
     prepareOpenClawProviderConfig(session.workspacePath, providerConfig);
     const messagePath = writeOpenClawRuntimeMessageFile(session.workspacePath, providerConfig, message);
 
-    const configuredModel = getFirstModelId(providerConfig);
-    const model = configuredModel && providerConfig?.baseUrl
-      ? `${OPENCLAW_PROXY_PROVIDER_ID}/${configuredModel}`
-      : configuredModel;
     const commandParts = [
       'agent',
       '--local',
     ];
 
-    if (model) {
-      commandParts.push('--model', model);
-    }
-
     commandParts.push(
-      '--session-key',
-      sessionKey,
+      '--session-id',
+      sessionId,
       '--message',
       OPENCLAW_MESSAGE_ARG_PLACEHOLDER
     );
@@ -933,12 +1097,31 @@ class AgentRunner extends EventEmitter {
       '--json',
     ];
 
-    const script = buildOpenClawShellScript(
-      session.workspacePath,
-      providerConfig,
-      buildOpenClawFileMessageCommand([...commandParts, ...commandSuffixParts], messagePath)
-    );
-    const launcher = getBashLauncher(script);
+    const openClawArgs = [...commandParts, ...commandSuffixParts];
+    const launcher: { command: string; args: string[]; env: Record<string, string>; shell: boolean } = isWindows
+      ? (() => {
+          const invocation = resolveCommandInvocation(
+            getOpenClawCommand(),
+            buildOpenClawNativeArgs(openClawArgs, messagePath)
+          );
+          return {
+            ...invocation,
+            env: buildOpenClawEnv(session.workspacePath, providerConfig, messagePath),
+          };
+        })()
+      : (() => {
+          const script = buildOpenClawShellScript(
+            session.workspacePath,
+            providerConfig,
+            buildOpenClawFileMessageCommand(openClawArgs, messagePath)
+          );
+          const bashLauncher = getBashLauncher(script);
+          return {
+            ...bashLauncher,
+            env: getStringEnv(),
+            shell: false,
+          };
+        })();
 
     return new Promise((resolve, reject) => {
       let output = '';
@@ -947,9 +1130,9 @@ class AgentRunner extends EventEmitter {
 
       const childProcess = spawn(launcher.command, launcher.args, {
         cwd: session.workspacePath,
-        env: getStringEnv(),
+        env: launcher.env,
         stdio: ['pipe', 'pipe', 'pipe'],
-        shell: false,
+        shell: launcher.shell,
       });
 
       session.process = childProcess;
@@ -982,7 +1165,7 @@ class AgentRunner extends EventEmitter {
         }
 
         if (code === 0) {
-          resolve(this.extractOpenClawText(output));
+          resolve(this.extractOpenClawText(output) || this.extractOpenClawText(errorOutput));
         } else {
           reject(new Error(errorOutput.trim() || output.trim() || `OpenClaw exited with code ${code}`));
         }
@@ -1058,11 +1241,12 @@ class AgentRunner extends EventEmitter {
       console.log(`Executing ${platform} one-shot command with ${args.length} args`);
       console.log(`Workspace: ${resolvedWorkspacePath}`);
 
-      const childProcess = spawn(config.command, args, {
+      const invocation = resolveCommandInvocation(config.command, args);
+      const childProcess = spawn(invocation.command, invocation.args, {
         cwd: resolvedWorkspacePath,
         env,
         stdio: ['ignore', 'pipe', 'pipe'],
-        shell: config.useShell ?? false,
+        shell: config.useShell ?? invocation.shell,
       });
 
       childProcess.stdout?.on('data', (data: Buffer) => {
@@ -1175,11 +1359,12 @@ class AgentRunner extends EventEmitter {
     // For interactive sessions, just spawn and wait for messages
     const args = config.args(resolvedWorkspacePath, resolvedProviderConfig);
 
-    const childProcess = spawn(config.command, args, {
+    const invocation = resolveCommandInvocation(config.command, args);
+    const childProcess = spawn(invocation.command, invocation.args, {
       cwd: resolvedWorkspacePath,
       env,
       stdio: ['pipe', 'pipe', 'pipe'],
-      shell: config.useShell ?? true,
+      shell: config.useShell ?? invocation.shell,
     });
 
     const session: AgentSession = {

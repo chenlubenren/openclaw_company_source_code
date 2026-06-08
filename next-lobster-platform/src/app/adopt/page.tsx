@@ -10,6 +10,8 @@ import { adoptOfficialLobster } from '@/lib/api';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useStore } from '@/store/useStore';
 
+const OFFICIAL_LOBSTER_AVATAR = '/claw_profile/03.png';
+
 export default function AdoptPage() {
   const router = useRouter();
   const { token } = useAuthStore();
@@ -61,7 +63,7 @@ export default function AdoptPage() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mt-6 border-4 border-pixel-black bg-pixel-white p-6"
+        className="mt-6 border-4 border-pixel-black bg-white p-6"
         style={{ boxShadow: '8px 8px 0px 0px #101010' }}
       >
         <h1 className="mb-2 text-center font-pixel text-3xl text-pixel-black">
@@ -84,14 +86,18 @@ export default function AdoptPage() {
             transition={{ duration: 0.55, repeat: isHatching ? Infinity : 0 }}
             className="relative"
           >
-            <div className="flex h-36 w-36 items-center justify-center border-4 border-pixel-black bg-pixel-yellow">
+            <motion.div
+              animate={{ scale: [1, 1.06, 1] }}
+              transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+              className="flex h-36 w-36 items-center justify-center bg-transparent"
+            >
               <img
-                src="/lobsters/lobster-merchant.png"
+                src={OFFICIAL_LOBSTER_AVATAR}
                 alt="官方龙虾"
                 className="h-28 w-28 object-contain"
                 style={{ imageRendering: 'pixelated' }}
               />
-            </div>
+            </motion.div>
 
             {isHatching && (
               <div className="mt-4">

@@ -13,9 +13,19 @@ const runtimeHealthEl = document.getElementById('runtime-health');
 const runtimeReadyEl = document.getElementById('runtime-ready');
 const runtimeMissingCliEl = document.getElementById('runtime-missing-cli');
 const runtimeMissingProviderEl = document.getElementById('runtime-missing-provider');
+const officialAdoptModal = document.getElementById('official-adopt-modal');
+const officialAdoptCloseButton = document.getElementById('official-adopt-close');
+const officialAdoptLaterButton = document.getElementById('official-adopt-later');
+const officialAdoptSubmitButton = document.getElementById('official-adopt-submit');
+const officialBackendUrlInput = document.getElementById('official-backend-url');
+const officialAuthTokenInput = document.getElementById('official-auth-token');
+const officialAgentNameInput = document.getElementById('official-agent-name');
+const officialAdoptStatusEl = document.getElementById('official-adopt-status');
 
 const TOKEN_STORAGE_KEY = 'openclaw.desktop.authToken';
 const BACKEND_STORAGE_KEY = 'openclaw.desktop.backendUrl';
+const OFFICIAL_ADOPT_PROMPT_STORAGE_KEY = 'openclaw.desktop.officialAdoptPrompt.seen';
+const OFFICIAL_ADOPTED_STORAGE_KEY = 'openclaw.desktop.officialLobster.adopted';
 
 let selectedAgent = null;
 let selectedFolder = null;
@@ -24,6 +34,7 @@ let latestAgents = [];
 function restoreSettings() {
   backendUrlInput.value = localStorage.getItem(BACKEND_STORAGE_KEY) || backendUrlInput.value || 'http://localhost:3002';
   authTokenInput.value = localStorage.getItem(TOKEN_STORAGE_KEY) || '';
+  syncOfficialAdoptInputs();
 }
 
 function persistSettings() {
@@ -36,6 +47,18 @@ function persistSettings() {
 
 function normalizeToken(value) {
   return String(value || '').trim().replace(/^Bearer\s+/i, '');
+}
+
+function syncOfficialAdoptInputs() {
+  if (!officialBackendUrlInput || !officialAuthTokenInput) return;
+  officialBackendUrlInput.value = backendUrlInput.value.trim() || 'http://localhost:3002';
+  officialAuthTokenInput.value = normalizeToken(authTokenInput.value);
+}
+
+function syncSettingsFromOfficialAdopt() {
+  backendUrlInput.value = officialBackendUrlInput.value.trim() || 'http://localhost:3002';
+  authTokenInput.value = normalizeToken(officialAuthTokenInput.value);
+  persistSettings();
 }
 
 function escapeHtml(value) {
@@ -52,8 +75,73 @@ function setImportStatus(message, tone = 'muted') {
   importStatusEl.className = `import-status ${tone}`;
 }
 
+function setOfficialAdoptStatus(message, tone = 'muted') {
+  officialAdoptStatusEl.textContent = message;
+  officialAdoptStatusEl.className = `official-adopt-status ${tone}`;
+}
+
 function setImportReady(ready) {
   importButton.disabled = !ready;
+}
+
+function markOfficialAdoptPromptSeen() {
+  localStorage.setItem(OFFICIAL_ADOPT_PROMPT_STORAGE_KEY, new Date().toISOString());
+}
+
+function showOfficialAdoptPrompt() {
+  if (!officialAdoptModal || localStorage.getItem(OFFICIAL_ADOPT_PROMPT_STORAGE_KEY)) return;
+  syncOfficialAdoptInputs();
+  setOfficialAdoptStatus('填写 Token 后即可领养官方龙虾。');
+  officialAdoptModal.classList.remove('hidden');
+  window.setTimeout(() => officialAgentNameInput?.focus(), 80);
+}
+
+function hideOfficialAdoptPrompt(markSeen = true) {
+  if (markSeen) markOfficialAdoptPromptSeen();
+  officialAdoptModal.classList.add('hidden');
+}
+
+async function adoptOfficialLobsterFromDesktop() {
+  const backendUrl = (officialBackendUrlInput.value.trim() || 'http://localhost:3002').replace(/\/+$/, '');
+  const token = normalizeToken(officialAuthTokenInput.value);
+  const name = officialAgentNameInput.value.trim() || '官方龙虾';
+
+  if (!token) {
+    setOfficialAdoptStatus('请先填写 Auth Token，当前桌面端还未接管网页登录态。', 'error');
+    officialAuthTokenInput.focus();
+    return;
+  }
+
+  syncSettingsFromOfficialAdopt();
+  officialAdoptSubmitButton.disabled = true;
+  officialAdoptLaterButton.disabled = true;
+  setOfficialAdoptStatus('正在创建官方龙虾 Agent...');
+
+  try {
+    const response = await fetch(`${backendUrl}/api/agents/official-lobster/adopt`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !payload.agent) {
+      throw new Error(payload.message || '领取官方龙虾失败');
+    }
+
+    localStorage.setItem(OFFICIAL_ADOPTED_STORAGE_KEY, payload.agent.id || new Date().toISOString());
+    markOfficialAdoptPromptSeen();
+    setOfficialAdoptStatus('领取成功，正在打开网页端 Agent 窝...', 'ok');
+    window.setTimeout(() => {
+      window.location.href = 'http://localhost:3000/my-den';
+    }, 450);
+  } catch (error) {
+    setOfficialAdoptStatus(error.message || '领取官方龙虾失败', 'error');
+    officialAdoptSubmitButton.disabled = false;
+    officialAdoptLaterButton.disabled = false;
+  }
 }
 
 function setRuntimeSummary(summary) {
@@ -271,7 +359,29 @@ importButton.addEventListener('click', () => {
 
 runtimeRefreshButton.addEventListener('click', () => {
   persistSettings();
+  syncOfficialAdoptInputs();
   void refreshRuntimeHealth();
+});
+
+backendUrlInput.addEventListener('change', syncOfficialAdoptInputs);
+authTokenInput.addEventListener('change', syncOfficialAdoptInputs);
+
+officialAdoptCloseButton.addEventListener('click', () => {
+  hideOfficialAdoptPrompt(true);
+});
+
+officialAdoptLaterButton.addEventListener('click', () => {
+  hideOfficialAdoptPrompt(true);
+});
+
+officialAdoptSubmitButton.addEventListener('click', () => {
+  void adoptOfficialLobsterFromDesktop();
+});
+
+officialAdoptModal.addEventListener('click', (event) => {
+  if (event.target === officialAdoptModal) {
+    hideOfficialAdoptPrompt(true);
+  }
 });
 
 openWebButton.addEventListener('click', () => {
@@ -288,3 +398,4 @@ restoreSettings();
 if (normalizeToken(authTokenInput.value)) {
   void refreshRuntimeHealth();
 }
+window.setTimeout(showOfficialAdoptPrompt, 160);

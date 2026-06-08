@@ -115,6 +115,45 @@
       </section>
     </main>
 
+    <div id="official-adopt-modal" class="official-adopt-modal hidden" role="dialog" aria-modal="true" aria-labelledby="official-adopt-title">
+      <section class="official-adopt-card">
+        <div class="official-adopt-header">
+          <div>
+            <p class="eyebrow">OFFICIAL AGENT</p>
+            <h2 id="official-adopt-title">领取官方龙虾</h2>
+            <p>领养后会创建真实后端 Agent，并在网页端 Agent 窝中查看。</p>
+          </div>
+          <button id="official-adopt-close" class="title-button" aria-label="关闭领取官方龙虾弹窗">×</button>
+        </div>
+
+        <div class="official-adopt-body">
+          <div class="official-adopt-avatar">
+            <img src="../../../next-lobster-platform/public/claw_profile/03.png" alt="官方龙虾" />
+          </div>
+          <div class="official-adopt-fields">
+            <label>
+              后端地址
+              <input id="official-backend-url" value="http://localhost:3002" />
+            </label>
+            <label>
+              Auth Token
+              <input id="official-auth-token" type="password" placeholder="登录后粘贴 token" />
+            </label>
+            <label>
+              Agent 名字
+              <input id="official-agent-name" value="官方龙虾" />
+            </label>
+          </div>
+        </div>
+
+        <div id="official-adopt-status" class="official-adopt-status">填写 Token 后即可领养官方龙虾。</div>
+        <div class="official-adopt-actions">
+          <button id="official-adopt-later" class="pixel-button ghost">稍后</button>
+          <button id="official-adopt-submit" class="pixel-button">领取官方龙虾</button>
+        </div>
+      </section>
+    </div>
+
     <script src="./app.js"></script>
   </body>
 </html>

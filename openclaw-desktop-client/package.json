@@ -9,6 +9,7 @@
     "start": "electron .",
     "scan": "node src/local-agent-scanner.cjs",
     "smoke:scan": "node scripts/smoke-local-agent-scanner.cjs",
+    "smoke:projects": "node scripts/smoke-local-project-service.cjs",
     "smoke:ui": "node scripts/smoke-renderer-ui.cjs"
   },
   "devDependencies": {

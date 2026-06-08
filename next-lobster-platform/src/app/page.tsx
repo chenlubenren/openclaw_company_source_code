@@ -12,7 +12,11 @@ import { useStore } from '@/store/useStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Lobster, Project, Session, SessionMessage } from '@/types';
 import { hasConfiguredProvider } from '@/lib/agentProvider';
-import { useSearchParams } from 'next/navigation';
+import { useOpenClawDesktopBridge } from '@/lib/desktop';
+import { adoptOfficialLobster } from '@/lib/api';
+import { useRouter, useSearchParams } from 'next/navigation';
+
+const OFFICIAL_LOBSTER_AVATAR = '/claw_profile/03.png';
 
 function FolderIcon({ src, className = 'h-12 w-12' }: { src?: string; className?: string }) {
   return (
@@ -321,6 +325,160 @@ function MobileDisplayModeSwitch({
   );
 }
 
+function OfficialAdoptPrompt({
+  isLoggedIn,
+  promptKey,
+  legacyPromptKey,
+  userName,
+  onOfficialAdopted,
+}: {
+  isLoggedIn: boolean;
+  promptKey: string | null;
+  legacyPromptKey?: string | null;
+  userName?: string;
+  onOfficialAdopted: () => Promise<void>;
+}) {
+  const router = useRouter();
+  const defaultOfficialName = userName ? `${userName}的官方龙虾` : '官方龙虾';
+  const [showOfficialAdoptPrompt, setShowOfficialAdoptPrompt] = useState(false);
+  const [officialAdoptName, setOfficialAdoptName] = useState(defaultOfficialName);
+  const [isOfficialAdopting, setIsOfficialAdopting] = useState(false);
+  const [officialAdoptError, setOfficialAdoptError] = useState('');
+
+  useEffect(() => {
+    setOfficialAdoptName(defaultOfficialName);
+  }, [defaultOfficialName]);
+
+  useEffect(() => {
+    if (!isLoggedIn || !promptKey) {
+      setShowOfficialAdoptPrompt(false);
+      return;
+    }
+
+    if (window.localStorage.getItem(promptKey)) return;
+
+    const timer = window.setTimeout(() => {
+      setShowOfficialAdoptPrompt(true);
+    }, 120);
+
+    return () => window.clearTimeout(timer);
+  }, [isLoggedIn, legacyPromptKey, promptKey]);
+
+  const markOfficialPromptSeen = () => {
+    for (const key of [promptKey, legacyPromptKey].filter(Boolean) as string[]) {
+      window.localStorage.setItem(key, new Date().toISOString());
+    }
+  };
+
+  const dismissOfficialAdoptPrompt = () => {
+    markOfficialPromptSeen();
+    setShowOfficialAdoptPrompt(false);
+    setOfficialAdoptError('');
+  };
+
+  const handleOfficialAdopt = async () => {
+    const trimmedName = officialAdoptName.trim() || defaultOfficialName;
+    if (isOfficialAdopting) return;
+
+    setIsOfficialAdopting(true);
+    setOfficialAdoptError('');
+    try {
+      await adoptOfficialLobster(trimmedName);
+      markOfficialPromptSeen();
+      setShowOfficialAdoptPrompt(false);
+      await onOfficialAdopted();
+      const isMobile = window.matchMedia('(max-width: 767px)').matches;
+      router.replace(isMobile ? '/?mobileTab=contacts' : '/my-den');
+    } catch (error) {
+      setOfficialAdoptError(error instanceof Error ? error.message : '领取官方龙虾失败。');
+    } finally {
+      setIsOfficialAdopting(false);
+    }
+  };
+
+  if (!showOfficialAdoptPrompt) return null;
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-pixel-black/70 p-4">
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-[680px] border-4 border-pixel-black bg-white p-4 md:p-5"
+        style={{ boxShadow: '6px 6px 0 #101010' }}
+      >
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <h2 className="font-pixel text-xl font-bold leading-tight text-pixel-black md:text-2xl">领取官方龙虾</h2>
+            <p className="mt-1 font-pixel text-xs leading-tight text-pixel-black/60 md:text-sm">
+              先领养一只官方 Agent，马上进入通讯录。
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={dismissOfficialAdoptPrompt}
+            className="shrink-0 border-2 border-pixel-black bg-pixel-white px-2 py-1 font-pixel text-sm leading-none text-pixel-black"
+            aria-label="关闭领取官方龙虾弹窗"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="mb-4 grid items-center gap-4 border-4 border-pixel-black bg-white p-3 sm:grid-cols-[140px_1fr] md:p-4">
+          <motion.div
+            animate={{ scale: [1, 1.06, 1] }}
+            transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+            className="mx-auto flex h-28 w-28 shrink-0 items-center justify-center bg-transparent sm:h-32 sm:w-32"
+          >
+            <img
+              src={OFFICIAL_LOBSTER_AVATAR}
+              alt="官方龙虾"
+              className="h-24 w-24 object-contain sm:h-28 sm:w-28"
+              style={{ imageRendering: 'pixelated' }}
+            />
+          </motion.div>
+          <div className="min-w-0 flex-1">
+            <label className="mb-1 block font-pixel text-xs text-pixel-black/70">Agent 名字</label>
+            <input
+              value={officialAdoptName}
+              onChange={(event) => setOfficialAdoptName(event.target.value)}
+              disabled={isOfficialAdopting}
+              className="w-full border-3 border-pixel-black bg-white px-3 py-2 font-pixel text-sm text-pixel-black outline-none disabled:opacity-50 md:text-base"
+              style={{ boxShadow: 'inset 2px 2px 0 #101010' }}
+            />
+          </div>
+        </div>
+
+        {officialAdoptError && (
+          <div className="mb-3 border-3 border-pixel-red bg-pixel-red/10 p-2">
+            <p className="font-pixel text-xs text-pixel-red">{officialAdoptError}</p>
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={dismissOfficialAdoptPrompt}
+            disabled={isOfficialAdopting}
+            className="border-4 border-pixel-black bg-pixel-white px-3 py-3 font-pixel text-sm text-pixel-black disabled:opacity-50 md:text-base"
+            style={{ boxShadow: '3px 3px 0 #101010' }}
+          >
+            稍后
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleOfficialAdopt()}
+            disabled={isOfficialAdopting}
+            className="border-4 border-pixel-black bg-pixel-green px-3 py-3 font-pixel text-sm text-pixel-white disabled:opacity-50 md:text-base"
+            style={{ boxShadow: '3px 3px 0 #101010' }}
+          >
+            {isOfficialAdopting ? '领取中...' : '领取'}
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 function MobileHome({
   lobsters,
   projects,
@@ -467,7 +625,7 @@ function MobileHome({
                 <p className={`mt-1 font-pixel leading-tight text-pixel-white/80 ${careMode ? 'text-lg' : 'text-xs'}`}>Agent 世界与跨平台召唤</p>
               </div>
               <MobileLinkRow href="/market" title="Agent 世界" description="浏览市场与论坛" accent="bg-pixel-yellow" icon={<MobileNavIcon tab="discover" compact={!careMode} />} displayMode={displayMode} />
-              <MobileLinkRow href="/upload" title="跨次元召唤" description="从 Coze 等平台接入 API Agent" accent="bg-pixel-red" icon={<MobileNavIcon tab="discover" compact={!careMode} />} displayMode={displayMode} />
+              <MobileLinkRow href="/upload?mode=coze" title="跨次元召唤" description="从 Coze 等平台接入 API Agent" accent="bg-pixel-red" icon={<MobileNavIcon tab="discover" compact={!careMode} />} displayMode={displayMode} />
               <MobileLinkRow href="/adopt" title="领取官方龙虾" description="快速创建一个真实后端 Agent" accent="bg-pixel-green" icon={<MobileNavIcon tab="contacts" compact={!careMode} />} displayMode={displayMode} />
             </MobilePanel>
           )}
@@ -544,16 +702,18 @@ export default function HomePage() {
 function HomePageInner() {
   const { lobsters, architectures, projects, sessions, sessionMessages, initialize, deleteAgentAPI } = useStore();
   const { token, user } = useAuthStore();
-  const isLoggedIn = !!token;
+  const desktopBridge = useOpenClawDesktopBridge();
+  const isLocalMode = Boolean(desktopBridge);
+  const isLoggedIn = !!token || isLocalMode;
   const [showHero, setShowHero] = useState(false);
   const [hasSeenHero, setHasSeenHero] = useState(false);
   const [configAgent, setConfigAgent] = useState<Lobster | null>(null);
 
   useEffect(() => {
-    if (isLoggedIn && user) {
+    if (isLoggedIn && (user || isLocalMode)) {
       void initialize();
     }
-  }, [isLoggedIn, user, initialize]);
+  }, [isLoggedIn, isLocalMode, user, initialize]);
 
   useEffect(() => {
     const isDesktop = window.matchMedia('(min-width: 768px)').matches;
@@ -593,6 +753,14 @@ function HomePageInner() {
         isLoggedIn={isLoggedIn}
       />
 
+      <OfficialAdoptPrompt
+        isLoggedIn={Boolean(token && user)}
+        promptKey={token && user ? `openclaw.officialAdoptPrompt.v2.${user.id}` : null}
+        legacyPromptKey={token && user ? `openclaw.mobileOfficialAdoptPrompt.${user.id}` : null}
+        userName={user?.username}
+        onOfficialAdopted={initialize}
+      />
+
       <motion.div
         className="hidden space-y-6 md:block"
         initial={{ opacity: 0 }}
@@ -626,8 +794,8 @@ function HomePageInner() {
               />
               <MenuCard
                 href="/upload"
-                title="上传 Agent"
-                description="Upload | 导入训练好的智能体"
+                title={isLocalMode ? '导入 Agent' : '上传 Agent'}
+                description={isLocalMode ? 'Import | 识别本地 Agent 并设置介绍头像' : 'Upload | 导入训练好的智能体'}
                 color="bg-pixel-blue"
                 delay={0.2}
                 icon={

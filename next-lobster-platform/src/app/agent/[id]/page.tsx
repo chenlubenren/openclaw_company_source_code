@@ -1196,26 +1196,35 @@ export default function AgentChatPage() {
           )}
         </div>
 
-        {/* Settings Side Panel */}
+        {/* Settings Panel */}
         <AnimatePresence>
           {showSettings && (
             <motion.div
-              initial={{ x: 400, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: 400, opacity: 0 }}
-              className="fixed inset-0 z-50 w-full overflow-y-auto bg-pixel-cream md:relative md:inset-auto md:z-auto md:w-96 md:border-l-4 md:border-pixel-black"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-pixel-black/40 p-0 md:flex md:items-stretch md:justify-end md:p-4"
+              onClick={() => setShowSettings(false)}
             >
-              <AgentSettingsPanel
-                agent={agent}
-                token={token || ''}
-                onClose={() => setShowSettings(false)}
-                onAgentUpdate={(updatedAgent) => {
-                  setAgent((current) => current ? { ...current, ...updatedAgent } : updatedAgent);
-                  setSelectedModel(updatedAgent.config?.model || '');
-                  setModelError('');
-                  restartAgentSession();
-                }}
-              />
+              <motion.div
+                initial={{ x: 400, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: 400, opacity: 0 }}
+                className="h-full w-full overflow-y-auto border-pixel-black bg-white text-pixel-black shadow-pixel md:w-[420px] md:border-4"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <AgentSettingsPanel
+                  agent={agent}
+                  token={token || ''}
+                  onClose={() => setShowSettings(false)}
+                  onAgentUpdate={(updatedAgent) => {
+                    setAgent((current) => current ? { ...current, ...updatedAgent } : updatedAgent);
+                    setSelectedModel(updatedAgent.config?.model || '');
+                    setModelError('');
+                    restartAgentSession();
+                  }}
+                />
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>

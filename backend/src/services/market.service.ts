@@ -18,6 +18,7 @@ import {
   resolveStoredPath,
 } from './workspace.service.js';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import crypto from 'crypto';
 import {
@@ -29,6 +30,36 @@ import {
 
 const PROFILE_CACHE_ROOT = path.join(process.cwd(), 'data', 'claw_profile');
 const SOURCE_INSTANCE_TAG_PREFIX = 'sourceInstance:';
+export const OFFICIAL_AGENT_MARKET_ID = 'official-agent';
+export const OFFICIAL_AGENT_NAME = '官方agent';
+export const OFFICIAL_AGENT_VERSION = '1.0.0';
+export const OFFICIAL_AGENT_AVATAR = '/claw_profile/03.png';
+export const OFFICIAL_AGENT_DESCRIPTION = '从官方 OpenClaw workspace 领养得到的固定官方 Agent。';
+const OFFICIAL_AGENT_DEFAULT_SOURCE_WORKSPACE = path.join(os.homedir(), '.openclaw', 'workspace');
+const LEGACY_OFFICIAL_LOBSTER_NAME = '官方龙虾';
+const OFFICIAL_AGENT_SYSTEM_USER_ID = 'official-system';
+const OFFICIAL_AGENT_SYSTEM_EMAIL = 'official@openclaw.local';
+const OFFICIAL_AGENT_SYSTEM_USERNAME = 'OpenClaw Official';
+const OFFICIAL_AGENT_TAGS = [
+  'official-agent',
+  'official-lobster',
+  'quick-adopt',
+  'openclaw-workspace',
+];
+const OFFICIAL_AGENT_SKIP_DIR_NAMES = new Set([
+  '.claude',
+  '.clawhub',
+  '.codex',
+  '.learnings',
+  'memory',
+  'temp',
+]);
+const OFFICIAL_AGENT_SKIP_FILE_NAMES = new Set([
+  'memory.md',
+  'user.md',
+  'swarm-orchestrator-last-status.json',
+]);
+let officialAgentMarketEnsured = false;
 
 function ensureProfileDir(): void {
   if (!fs.existsSync(PROFILE_CACHE_ROOT)) {
@@ -88,6 +119,364 @@ function uniqueTags(tags: unknown[]): string[] {
 
 function getSourceInstanceTag(agentInstanceId: string): string {
   return `${SOURCE_INSTANCE_TAG_PREFIX}${agentInstanceId}`;
+}
+
+export function resolveOfficialAgentSourceWorkspace(): string {
+  const configuredPath = process.env.OFFICIAL_AGENT_WORKSPACE?.trim() || process.env.OFFICIAL_LOBSTER_WORKSPACE?.trim();
+  return resolveStoredPath(configuredPath || OFFICIAL_AGENT_DEFAULT_SOURCE_WORKSPACE);
+}
+
+function shouldSkipOfficialAgentWorkspacePath(relativePath: string, isDirectory = false): boolean {
+  const normalized = relativePath.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
+  if (!normalized) return false;
+
+  if (shouldSkipPublishPath(normalized, isDirectory)) {
+    return true;
+  }
+
+  const segments = normalized.split('/').filter(Boolean).map((segment) => segment.toLowerCase());
+  if (segments.some((segment) => OFFICIAL_AGENT_SKIP_DIR_NAMES.has(segment))) {
+    return true;
+  }
+
+  if (!isDirectory) {
+    const basename = path.posix.basename(normalized).toLowerCase();
+    if (OFFICIAL_AGENT_SKIP_FILE_NAMES.has(basename)) {
+      return true;
+    }
+    if (basename.startsWith('tmp_') || basename.startsWith('resume_')) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function copyOfficialAgentWorkspace(
+  source: string,
+  destination: string,
+  root: string = source,
+  sanitizedRisks: PublishRisk[] = []
+): boolean {
+  try {
+    if (!fs.existsSync(source)) return false;
+    fs.mkdirSync(destination, { recursive: true });
+
+    const entries = fs.readdirSync(source, { withFileTypes: true });
+    for (const entry of entries) {
+      const srcPath = path.join(source, entry.name);
+      const relativePath = path.relative(root, srcPath).replace(/\\/g, '/');
+
+      if (entry.isSymbolicLink() || shouldSkipOfficialAgentWorkspacePath(relativePath, entry.isDirectory())) {
+        continue;
+      }
+
+      const destPath = path.join(destination, entry.name);
+      if (entry.isDirectory()) {
+        if (!copyOfficialAgentWorkspace(srcPath, destPath, root, sanitizedRisks)) {
+          return false;
+        }
+        continue;
+      }
+
+      if (entry.isFile()) {
+        const buffer = fs.readFileSync(srcPath);
+        const sanitized = sanitizePublishFileForMarket(relativePath, buffer);
+        sanitizedRisks.push(...sanitized.risks);
+        if (sanitized.action === 'omit' || !sanitized.buffer) {
+          continue;
+        }
+
+        fs.mkdirSync(path.dirname(destPath), { recursive: true });
+        fs.writeFileSync(destPath, sanitized.buffer);
+      }
+    }
+
+    return true;
+  } catch (error) {
+    console.warn('Failed to copy official agent workspace entry:', error);
+    return false;
+  }
+}
+
+function writeOfficialAgentManifest(marketPath: string): string {
+  const manifest = {
+    schemaVersion: '1.0',
+    name: OFFICIAL_AGENT_NAME,
+    version: OFFICIAL_AGENT_VERSION,
+    description: OFFICIAL_AGENT_DESCRIPTION,
+    entrypoint: { type: 'openclaw' },
+    metadata: {
+      source: 'official-agent',
+      sourceWorkspace: 'fixed-official-workspace',
+    },
+  };
+  const manifestJson = JSON.stringify(manifest, null, 2);
+  fs.writeFileSync(path.join(marketPath, 'agent.manifest.json'), manifestJson, 'utf-8');
+  return manifestJson;
+}
+
+function ensureOfficialAgentOwner(now: number): void {
+  const rawDb = getRawDb();
+  const existing = rawDb.prepare('SELECT id FROM users WHERE id = ?').get(OFFICIAL_AGENT_SYSTEM_USER_ID);
+  if (existing) return;
+
+  rawDb.prepare(`
+    INSERT INTO users (id, email, username, password_hash, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(
+    OFFICIAL_AGENT_SYSTEM_USER_ID,
+    OFFICIAL_AGENT_SYSTEM_EMAIL,
+    OFFICIAL_AGENT_SYSTEM_USERNAME,
+    'official-agent-system-user',
+    now,
+    now
+  );
+}
+
+function hideLegacyOfficialLobsterMarketRows(now: number): void {
+  getRawDb().prepare(`
+    UPDATE market_agents
+    SET status = 'disabled', visibility = 'unlisted', updated_at = ?
+    WHERE id <> ?
+      AND name = ?
+      AND (icon LIKE ? OR tags LIKE ?)
+  `).run(
+    now,
+    OFFICIAL_AGENT_MARKET_ID,
+    LEGACY_OFFICIAL_LOBSTER_NAME,
+    '%03.png%',
+    '%official-lobster%'
+  );
+}
+
+export async function ensureOfficialAgentMarketEntry(
+  options: { forceSyncWorkspace?: boolean } = {}
+): Promise<{ success: boolean; marketAgentId?: string; sourceWorkspace?: string; workspacePath?: string; error?: string }> {
+  try {
+    const sourceWorkspace = resolveOfficialAgentSourceWorkspace();
+    if (!fs.existsSync(sourceWorkspace) || !fs.statSync(sourceWorkspace).isDirectory()) {
+      return { success: false, error: `Official workspace not found: ${sourceWorkspace}`, sourceWorkspace };
+    }
+
+    const rawDb = getRawDb();
+    const now = Date.now();
+    const marketPath = getMarketAgentPath(OFFICIAL_AGENT_MARKET_ID, OFFICIAL_AGENT_VERSION);
+    const existing = rawDb.prepare('SELECT id FROM market_agents WHERE id = ?').get(OFFICIAL_AGENT_MARKET_ID);
+    const shouldSyncWorkspace = options.forceSyncWorkspace || !existing || !fs.existsSync(path.join(marketPath, 'agent.manifest.json'));
+
+    if (shouldSyncWorkspace) {
+      deleteDirectory(marketPath);
+      const sanitizedRisks: PublishRisk[] = [];
+      if (!copyOfficialAgentWorkspace(sourceWorkspace, marketPath, sourceWorkspace, sanitizedRisks)) {
+        deleteDirectory(marketPath);
+        return { success: false, error: 'Failed to copy official workspace into market template', sourceWorkspace };
+      }
+      writeOfficialAgentManifest(marketPath);
+      if (sanitizedRisks.length > 0) {
+        console.info(formatPublishSanitizationMessage(sanitizedRisks));
+      }
+    } else {
+      writeOfficialAgentManifest(marketPath);
+    }
+
+    ensureOfficialAgentOwner(now);
+
+    const checksum = calculateDirChecksum(marketPath) || '';
+    const fileSize = getDirectorySize(marketPath);
+    const tags = JSON.stringify(OFFICIAL_AGENT_TAGS);
+
+    rawDb.prepare(`
+      INSERT INTO market_agents (
+        id, name, description, owner_user_id, latest_version,
+        visibility, status, tags, icon, cover_image,
+        download_count, rating, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        name = excluded.name,
+        description = excluded.description,
+        owner_user_id = excluded.owner_user_id,
+        latest_version = excluded.latest_version,
+        visibility = excluded.visibility,
+        status = excluded.status,
+        tags = excluded.tags,
+        icon = excluded.icon,
+        cover_image = excluded.cover_image,
+        updated_at = excluded.updated_at
+    `).run(
+      OFFICIAL_AGENT_MARKET_ID,
+      OFFICIAL_AGENT_NAME,
+      OFFICIAL_AGENT_DESCRIPTION,
+      OFFICIAL_AGENT_SYSTEM_USER_ID,
+      OFFICIAL_AGENT_VERSION,
+      'public',
+      'active',
+      tags,
+      OFFICIAL_AGENT_AVATAR,
+      '',
+      0,
+      0,
+      now,
+      now
+    );
+
+    rawDb.prepare('DELETE FROM market_agent_versions WHERE market_agent_id = ? AND version = ?')
+      .run(OFFICIAL_AGENT_MARKET_ID, OFFICIAL_AGENT_VERSION);
+    rawDb.prepare(`
+      INSERT INTO market_agent_versions (
+        id, market_agent_id, version, manifest_path, source_workspace_path,
+        checksum, changelog, file_size, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      crypto.randomUUID().replace(/-/g, ''),
+      OFFICIAL_AGENT_MARKET_ID,
+      OFFICIAL_AGENT_VERSION,
+      path.join(marketPath, 'agent.manifest.json'),
+      marketPath,
+      checksum,
+      'Synced official OpenClaw workspace',
+      fileSize,
+      now
+    );
+
+    hideLegacyOfficialLobsterMarketRows(now);
+    officialAgentMarketEnsured = true;
+    return {
+      success: true,
+      marketAgentId: OFFICIAL_AGENT_MARKET_ID,
+      sourceWorkspace,
+      workspacePath: marketPath,
+    };
+  } catch (error) {
+    console.error('Failed to ensure official agent market entry:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to sync official agent market entry',
+    };
+  }
+}
+
+export async function adoptOfficialAgentToUser(
+  userId: string,
+  requestedName: string
+): Promise<{ success: boolean; agentId?: string; error?: string }> {
+  const displayName = requestedName.trim();
+  if (!displayName) {
+    return { success: false, error: '请先给官方 Agent 起一个名字' };
+  }
+
+  const ensured = await ensureOfficialAgentMarketEntry({ forceSyncWorkspace: true });
+  if (!ensured.success) {
+    return { success: false, error: ensured.error || '官方 Agent 模板不可用' };
+  }
+
+  const db = getRawDb();
+  const now = Date.now();
+  const agentId = crypto.randomUUID().replace(/-/g, '');
+  const workspacePath = getAgentWorkspacePath(userId, agentId);
+  const baselinePath = getAgentBaselinePath(userId, agentId);
+  const agentRoot = path.dirname(workspacePath);
+  const marketPath = getMarketAgentPath(OFFICIAL_AGENT_MARKET_ID, OFFICIAL_AGENT_VERSION);
+
+  try {
+    if (!cloneDirectory(marketPath, workspacePath)) {
+      deleteDirectory(agentRoot);
+      return { success: false, error: '复制官方 Agent workspace 失败' };
+    }
+
+    let manifest: Record<string, unknown> = {};
+    const manifestPath = path.join(workspacePath, 'agent.manifest.json');
+    if (fs.existsSync(manifestPath)) {
+      try {
+        const parsed = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+        if (parsed && typeof parsed === 'object') {
+          manifest = parsed as Record<string, unknown>;
+        }
+      } catch {
+        manifest = {};
+      }
+    }
+
+    manifest = {
+      schemaVersion: '1.0',
+      ...manifest,
+      name: displayName,
+      version: String(manifest.version || OFFICIAL_AGENT_VERSION),
+      description: OFFICIAL_AGENT_DESCRIPTION,
+      entrypoint: {
+        type: 'openclaw',
+        ...((manifest.entrypoint && typeof manifest.entrypoint === 'object') ? manifest.entrypoint as Record<string, unknown> : {}),
+      },
+      metadata: {
+        ...((manifest.metadata && typeof manifest.metadata === 'object') ? manifest.metadata as Record<string, unknown> : {}),
+        source: 'official-agent',
+        sourceMarketAgentId: OFFICIAL_AGENT_MARKET_ID,
+        sourceWorkspace: 'fixed-official-workspace',
+      },
+    };
+
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
+    fs.writeFileSync(
+      path.join(workspacePath, 'agent.config.json'),
+      JSON.stringify(
+        {
+          agentId,
+          name: displayName,
+          description: OFFICIAL_AGENT_DESCRIPTION,
+          avatar: OFFICIAL_AGENT_AVATAR,
+          platform: 'openclaw',
+          providerId: null,
+          updatedAt: new Date(now).toISOString(),
+        },
+        null,
+        2
+      ),
+      'utf-8'
+    );
+
+    cloneDirectory(workspacePath, baselinePath);
+
+    db.prepare(`
+      INSERT INTO user_agent_instances (
+        id, user_id, source_market_agent_id, source_version, name, description,
+        avatar, agent_key, workspace_path, state_dir, baseline_snapshot_path, status,
+        manifest, tags, cave_id, provider_id, conversation_count, total_messages,
+        last_active_at, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      agentId,
+      userId,
+      OFFICIAL_AGENT_MARKET_ID,
+      OFFICIAL_AGENT_VERSION,
+      displayName,
+      OFFICIAL_AGENT_DESCRIPTION,
+      OFFICIAL_AGENT_AVATAR,
+      generateAgentKey(),
+      workspacePath,
+      path.join(workspacePath, '.openclaw'),
+      baselinePath,
+      'idle',
+      JSON.stringify(manifest),
+      JSON.stringify(OFFICIAL_AGENT_TAGS),
+      null,
+      null,
+      0,
+      0,
+      null,
+      now,
+      now
+    );
+
+    await incrementDownloadCount(OFFICIAL_AGENT_MARKET_ID);
+    return { success: true, agentId };
+  } catch (error) {
+    deleteDirectory(agentRoot);
+    console.error('Failed to adopt official agent:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '官方 Agent 领养失败',
+    };
+  }
 }
 
 function copyPublishableWorkspace(
@@ -188,6 +577,13 @@ export async function getMarketAgents(
   const db = getDb();
   const { status = 'active', visibility = 'public', search, limit = 50, offset = 0 } = options;
 
+  if (!officialAgentMarketEnsured && status === 'active' && visibility === 'public') {
+    const ensured = await ensureOfficialAgentMarketEntry();
+    if (!ensured.success) {
+      console.warn(ensured.error || 'Official agent market entry is not available');
+    }
+  }
+
   const query = db
     .select({
       id: marketAgents.id,
@@ -244,7 +640,11 @@ export async function getMarketAgents(
     });
   }
 
-  return agentsWithStats;
+  return agentsWithStats.sort((a, b) => {
+    if (a.id === OFFICIAL_AGENT_MARKET_ID) return -1;
+    if (b.id === OFFICIAL_AGENT_MARKET_ID) return 1;
+    return 0;
+  });
 }
 
 export async function getMarketAgentById(marketAgentId: string): Promise<MarketAgentWithStats | null> {
@@ -374,6 +774,15 @@ export async function getOrCacheAvatar(
       agentId,
       localPath,
       url: `/api/profile/${cacheFileName}`,
+      cached: true,
+    };
+  }
+
+  if (avatarUrl.startsWith('/') && !avatarUrl.startsWith('/api/')) {
+    return {
+      agentId,
+      localPath: '',
+      url: avatarUrl,
       cached: true,
     };
   }

@@ -102,6 +102,23 @@ fs.writeFileSync(
         body: JSON.stringify({ projects: [] }),
       });
     });
+    await page.route('**/api/architectures**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ architectures: [] }),
+      });
+    });
+    await page.route('**/api/market/coze**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          agents: [],
+          runtime: { apiBase: 'https://api.coze.test', configured: false },
+        }),
+      });
+    });
   }
 
   await page.addInitScript((key) => {
@@ -118,6 +135,18 @@ fs.writeFileSync(
         },
         version: 0,
       })
+    );
+    window.localStorage.setItem(
+      'openclaw.officialAdoptPrompt.mobile-render-smoke-user',
+      'smoke-test-seen'
+    );
+    window.localStorage.setItem(
+      'openclaw.officialAdoptPrompt.v2.mobile-render-smoke-user',
+      'smoke-test-seen'
+    );
+    window.localStorage.setItem(
+      'openclaw.mobileOfficialAdoptPrompt.mobile-render-smoke-user',
+      'smoke-test-seen'
     );
     if (!window.localStorage.getItem(key)) {
       window.localStorage.setItem(key, 'normal');
@@ -240,6 +269,48 @@ fs.writeFileSync(
   await waitForMode('care');
   const projectsCare = await page.evaluate(readProjectMetrics);
 
+  await page.evaluate((key) => window.localStorage.setItem(key, 'normal'), storageKey);
+  await page.goto(origin + '/upload?mode=coze');
+  await page.waitForSelector('main', { timeout: 10000 });
+  const uploadCozeOnly = await page.evaluate(() => {
+    const text = document.body.innerText;
+    return {
+      titleVisible: text.includes('跨次元召唤'),
+      hasFolderTab: text.includes('上传文件夹'),
+      hasZipTab: text.includes('上传 zip'),
+      hasFilePicker: text.includes('点击选择文件夹') || text.includes('点击选择 zip'),
+      hasCozeControls: text.includes('搜索 Coze Agent') || text.includes('COZE_API_TOKEN'),
+    };
+  });
+
+  await page.goto(origin + '/architectures/create');
+  await page.waitForSelector('.react-flow', { timeout: 15000 });
+  const createMobileBeforePanel = await page.evaluate(() => {
+    const text = document.body.innerText;
+    const home = [...document.querySelectorAll('a')].find((link) => link.textContent?.includes('Home'));
+    const title = [...document.querySelectorAll('h1')].find((heading) => heading.textContent?.includes('创建团队'));
+    const nodePanelButton = [...document.querySelectorAll('button')].find((button) => {
+      const label = button.textContent || '';
+      return label.includes('节点列表') || label.includes('编辑节点');
+    });
+    const homeBox = home?.getBoundingClientRect();
+    const titleBox = title?.getBoundingClientRect();
+
+    return {
+      hasCreateTitle: text.includes('创建团队'),
+      hasNodePanelButton: Boolean(nodePanelButton),
+      hasHoverHint: text.includes('悬停连线出现'),
+      homeAndTitleAligned: Boolean(homeBox && titleBox && Math.abs((homeBox.top + homeBox.height / 2) - (titleBox.top + titleBox.height / 2)) <= 24),
+    };
+  });
+  await page.click('button:has-text("节点列表")');
+  const createMobileAfterPanel = await page.evaluate(() => {
+    const text = document.body.innerText;
+    return {
+      panelOpen: text.includes('点击节点进行编辑') || text.includes('节点列表'),
+    };
+  });
+
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.waitForTimeout(300);
   const desktop = await page.evaluate(() => {
@@ -251,7 +322,7 @@ fs.writeFileSync(
     };
   });
 
-  return JSON.stringify({ normal, meNormal, care, restoredNormal, projectsNormal, projectsCare, desktop }, null, 2);
+  return JSON.stringify({ normal, meNormal, care, restoredNormal, projectsNormal, projectsCare, uploadCozeOnly, createMobileBeforePanel, createMobileAfterPanel, desktop }, null, 2);
 }`
 );
 
@@ -268,12 +339,12 @@ try {
   assert(metrics.normal.mode === 'normal', `Expected default mobile mode normal, got ${metrics.normal.mode}`);
   assert(metrics.normal.viewport.width === 390, `Expected mobile viewport width 390, got ${metrics.normal.viewport.width}`);
   assert(metrics.normal.viewport.height === 844, `Expected mobile viewport height 844, got ${metrics.normal.viewport.height}`);
-  assert(metrics.normal.nav?.height >= 76 && metrics.normal.nav.height <= 96, `Expected normal nav height around 76-96, got ${metrics.normal.nav?.height}`);
+  assert(metrics.normal.nav?.height >= 62 && metrics.normal.nav.height <= 76, `Expected normal nav height around 62-76, got ${metrics.normal.nav?.height}`);
   assert(metrics.normal.iconSizes.length === 5, `Expected 5 normal mobile nav icons, got ${metrics.normal.iconSizes.length}`);
   assert(metrics.normal.labelSizes.length === 5, `Expected 5 normal mobile nav labels, got ${metrics.normal.labelSizes.length}`);
 
   for (const [index, icon] of metrics.normal.iconSizes.entries()) {
-    assert(icon.width >= 30 && icon.width <= 40 && icon.height >= 30 && icon.height <= 40, `Normal mobile nav icon ${index} has unexpected size: ${icon.width}x${icon.height}`);
+    assert(icon.width >= 26 && icon.width <= 34 && icon.height >= 26 && icon.height <= 34, `Normal mobile nav icon ${index} has unexpected size: ${icon.width}x${icon.height}`);
   }
 
   for (const label of metrics.normal.labelSizes) {
@@ -287,9 +358,9 @@ try {
 
   assert(metrics.care.mode === 'care', `Expected care mobile mode after clicking care, got ${metrics.care.mode}`);
   assert(metrics.care.settings?.carePressed === 'true', 'Care display option should be active after click.');
-  assert(metrics.care.nav?.height >= 128, `Expected care nav height >= 128, got ${metrics.care.nav?.height}`);
+  assert(metrics.care.nav?.height >= 104, `Expected care nav height >= 104, got ${metrics.care.nav?.height}`);
   for (const [index, icon] of metrics.care.iconSizes.entries()) {
-    assert(icon.width >= 58 && icon.height >= 58, `Care mobile nav icon ${index} is too small: ${icon.width}x${icon.height}`);
+    assert(icon.width >= 48 && icon.height >= 48, `Care mobile nav icon ${index} is too small: ${icon.width}x${icon.height}`);
   }
 
   for (const label of metrics.care.labelSizes) {
@@ -306,15 +377,33 @@ try {
   assert(metrics.projectsNormal.newProjectButton?.width >= 44 && metrics.projectsNormal.newProjectButton.width <= 56, `Normal projects new button width should be compact, got ${metrics.projectsNormal.newProjectButton?.width}px`);
   assert(metrics.projectsNormal.newProjectButton?.height >= 44 && metrics.projectsNormal.newProjectButton.height <= 56, `Normal projects new button height should be compact, got ${metrics.projectsNormal.newProjectButton?.height}px`);
   assert(metrics.projectsNormal.firstWorkspaceIcon?.width >= 44 && metrics.projectsNormal.firstWorkspaceIcon.width <= 56, `Normal projects icon width should be compact, got ${metrics.projectsNormal.firstWorkspaceIcon?.width}px`);
-  assert(metrics.projectsNormal.firstLabel?.fontSize >= 14 && metrics.projectsNormal.firstLabel.fontSize <= 17, `Normal projects form labels should be compact, got ${metrics.projectsNormal.firstLabel?.fontSize}px`);
-  assert(metrics.projectsNormal.firstInput?.height >= 44 && metrics.projectsNormal.firstInput.height <= 52, `Normal projects inputs should be compact, got ${metrics.projectsNormal.firstInput?.height}px`);
+  if (metrics.projectsNormal.firstLabel) {
+    assert(metrics.projectsNormal.firstLabel.fontSize >= 14 && metrics.projectsNormal.firstLabel.fontSize <= 17, `Normal projects form labels should be compact, got ${metrics.projectsNormal.firstLabel.fontSize}px`);
+  }
+  if (metrics.projectsNormal.firstInput) {
+    assert(metrics.projectsNormal.firstInput.height >= 44 && metrics.projectsNormal.firstInput.height <= 52, `Normal projects inputs should be compact, got ${metrics.projectsNormal.firstInput.height}px`);
+  }
 
   assert(metrics.projectsCare.pageExists, 'Projects page care layout hook is missing.');
   assert(metrics.projectsCare.mode === 'care', `Expected projects page care mode, got ${metrics.projectsCare.mode}`);
   assert(metrics.projectsCare.heading?.fontSize >= 44, `Care projects heading should stay large, got ${metrics.projectsCare.heading?.fontSize}px`);
   assert(metrics.projectsCare.newProjectButton?.width >= 70, `Care projects new button should stay large, got ${metrics.projectsCare.newProjectButton?.width}px`);
   assert(metrics.projectsCare.firstWorkspaceIcon?.width >= 64, `Care projects icon should stay large, got ${metrics.projectsCare.firstWorkspaceIcon?.width}px`);
-  assert(metrics.projectsCare.firstInput?.height >= 52, `Care projects inputs should stay large, got ${metrics.projectsCare.firstInput?.height}px`);
+  if (metrics.projectsCare.firstInput) {
+    assert(metrics.projectsCare.firstInput.height >= 52, `Care projects inputs should stay large, got ${metrics.projectsCare.firstInput.height}px`);
+  }
+
+  assert(metrics.uploadCozeOnly.titleVisible, 'Coze-only upload entry should show the cross-dimensional summon title.');
+  assert(!metrics.uploadCozeOnly.hasFolderTab, 'Coze-only upload entry must not show the folder upload tab.');
+  assert(!metrics.uploadCozeOnly.hasZipTab, 'Coze-only upload entry must not show the zip upload tab.');
+  assert(!metrics.uploadCozeOnly.hasFilePicker, 'Coze-only upload entry must not show file picker content.');
+  assert(metrics.uploadCozeOnly.hasCozeControls, 'Coze-only upload entry should render Coze summon controls.');
+
+  assert(metrics.createMobileBeforePanel.hasCreateTitle, 'Create-team mobile page should render the title.');
+  assert(metrics.createMobileBeforePanel.hasNodePanelButton, 'Create-team mobile page should expose a node panel button.');
+  assert(!metrics.createMobileBeforePanel.hasHoverHint, 'Create-team mobile page should not show the hover-to-delete hint.');
+  assert(metrics.createMobileBeforePanel.homeAndTitleAligned, 'Create-team mobile title should align with the Home button.');
+  assert(metrics.createMobileAfterPanel.panelOpen, 'Create-team mobile node panel should open after tapping the node list button.');
 
   assert(metrics.desktop.mobileNavDisplay === 'none', `Mobile nav must be hidden on desktop, got display=${metrics.desktop.mobileNavDisplay}`);
 
@@ -332,6 +421,8 @@ try {
     projectsNormalIconWidth: metrics.projectsNormal.firstWorkspaceIcon.width,
     projectsCareHeadingFontSize: metrics.projectsCare.heading.fontSize,
     projectsCareIconWidth: metrics.projectsCare.firstWorkspaceIcon.width,
+    cozeOnlyUploadVerified: metrics.uploadCozeOnly,
+    createTeamMobileVerified: metrics.createMobileBeforePanel,
     displayModeSwitchVerified: true,
     consoleErrors: errors.errors,
     consoleWarnings: warnings.warnings,

@@ -55,8 +55,8 @@ function listProfileFiles(): string[] {
     .sort((a, b) => a.localeCompare(b, 'en'));
 }
 
-function buildProfileUrl(req: Request, filename: string): string {
-  return `${req.protocol}://${req.get('host')}/api/profile/${filename}`;
+function buildProfileUrl(_req: Request, filename: string): string {
+  return `/api/profile/${filename}`;
 }
 
 function firstParam(value: string | string[] | undefined): string {

@@ -8,6 +8,7 @@ import { NodeFlowPreview } from '@/components/architecture/NodeFlowPreview';
 import { PixelButton } from '@/components/ui/PixelButton';
 import { PixelInput } from '@/components/ui/PixelInput';
 import { fetchProjectFileContent, fetchProjectFiles, fetchWorkflowExecution, startWorkflowExecution } from '@/lib/api';
+import { useOpenClawDesktopBridge } from '@/lib/desktop';
 import { buildWorkflowDslFromCanvas } from '@/lib/workflowDsl';
 import { useStore } from '@/store/useStore';
 import type {
@@ -59,6 +60,7 @@ export function ProjectWorkspace({
   architectures: Architecture[];
 }) {
   const { updateProjectAPI, fetchProjects, lobsters, fetchAgents } = useStore();
+  const desktopBridge = useOpenClawDesktopBridge();
   const boundAgentIds = useMemo(() => project.agentIds || [], [project.agentIds]);
   const boundTeams = useMemo(
     () => architectures.filter((team) => project.teamIds.includes(team.id)),
@@ -128,7 +130,7 @@ export function ProjectWorkspace({
     setPreview(null);
     setLatestExecution(null);
     setChatDraft('');
-  }, [project.id]);
+  }, [desktopBridge, project.id]);
 
   useEffect(() => {
     setBindingTeamIds(project.teamIds);
@@ -161,7 +163,9 @@ export function ProjectWorkspace({
   const openFilePreview = useCallback(async (relativePath: string) => {
     setPreview({ path: relativePath, loading: true });
     try {
-      const file = await fetchProjectFileContent(project.id, relativePath);
+      const file = desktopBridge?.readLocalProjectFile
+        ? await desktopBridge.readLocalProjectFile(project.id, relativePath)
+        : await fetchProjectFileContent(project.id, relativePath);
       setPreview({ path: relativePath, loading: false, file });
     } catch (error) {
       setPreview({
@@ -462,6 +466,7 @@ function ProjectFilePanel({
   onWidthChange: (width: number) => void;
   onOpenFile: (relativePath: string) => void;
 }) {
+  const desktopBridge = useOpenClawDesktopBridge();
   const [tree, setTree] = useState<ProjectFileTree | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -489,11 +494,14 @@ function ProjectFilePanel({
     loadingProjectId.current = project.id;
     setLoading(true);
     setError('');
-    fetchProjectFiles(project.id)
+    const loadTree = desktopBridge?.readLocalProjectTree
+      ? desktopBridge.readLocalProjectTree(project.id)
+      : fetchProjectFiles(project.id);
+    loadTree
       .then((nextTree) => setTree(nextTree))
       .catch((fetchError) => setError(fetchError instanceof Error ? fetchError.message : '读取文件树失败'))
       .finally(() => setLoading(false));
-  }, [collapsed, loading, project.id]);
+  }, [collapsed, desktopBridge, loading, project.id]);
 
   const togglePath = (relativePath: string) => {
     setExpandedPaths((current) => {

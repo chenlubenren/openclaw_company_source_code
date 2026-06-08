@@ -16,6 +16,7 @@ import {
 } from '@/types';
 import * as api from '@/lib/api';
 import { API_BASE } from '@/lib/runtime';
+import { getOpenClawDesktop, type DesktopLocalAgent } from '@/lib/desktop';
 import { useAuthStore } from './useAuthStore';
 
 interface LobsterStore {
@@ -136,6 +137,33 @@ function agentToLobster(agent: any): Lobster {
     uploaderUsername: agent.uploaderUsername || agent.ownerUsername,
     isPublishedToMarket: Boolean(agent.isPublishedToMarket || agent.marketAgentId),
     marketAgentId: agent.marketAgentId || null,
+  };
+}
+
+function desktopAgentToLobster(agent: DesktopLocalAgent): Lobster {
+  return {
+    id: agent.id,
+    name: agent.name,
+    description: agent.description || agent.reason || '',
+    avatar: agent.avatar || '',
+    role: agent.description || agent.reason || 'Local Agent',
+    status: 'idle',
+    conversations: [],
+    tags: [
+      'local',
+      agent.imported ? 'imported' : 'detected',
+      agent.platform ? `platform:${agent.platform}` : 'platform:unknown',
+    ],
+    caveId: undefined,
+    createdAt: agent.createdAt,
+    updatedAt: agent.updatedAt,
+    canEditProfile: false,
+    platform: agent.platform,
+    ownerUsername: 'Local Desktop',
+    uploaderUsername: 'Local Desktop',
+    isPublishedToMarket: false,
+    marketAgentId: null,
+    openclawPath: agent.workspacePath,
   };
 }
 
@@ -372,6 +400,29 @@ export const useStore = create<LobsterStore>()(
   fetchAgents: async (caveId?: string) => {
     try {
       set({ isLoading: true });
+      const desktop = getOpenClawDesktop();
+      if (desktop?.listLocalAgents) {
+        const result = await desktop.listLocalAgents();
+        set({ lobsters: result.agents.map(desktopAgentToLobster), isLoading: false });
+        return;
+      }
+      if (desktop?.scanLocalAgents) {
+        const result = await desktop.scanLocalAgents();
+        const lobsters = result.agents.map((agent) => desktopAgentToLobster({
+          id: `local-agent-${agent.path}`,
+          name: agent.name,
+          description: agent.reason,
+          platform: agent.type,
+          workspacePath: agent.path,
+          confidence: agent.confidence,
+          reason: agent.reason,
+          imported: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }));
+        set({ lobsters, isLoading: false });
+        return;
+      }
       const agents = await api.fetchAgents(caveId);
       const lobsters = agents.map(agentToLobster);
       set({ lobsters, isLoading: false });
@@ -383,6 +434,12 @@ export const useStore = create<LobsterStore>()(
 
   fetchProjects: async () => {
     try {
+      const desktop = getOpenClawDesktop();
+      if (desktop?.listLocalProjects) {
+        const projects = await desktop.listLocalProjects();
+        set({ projects });
+        return;
+      }
       const projects = await api.fetchProjects();
       set({ projects });
     } catch (error) {
@@ -460,6 +517,12 @@ export const useStore = create<LobsterStore>()(
   },
 
   deleteAgentAPI: async (id) => {
+    const desktop = getOpenClawDesktop();
+    if (desktop?.deleteLocalAgent) {
+      await desktop.deleteLocalAgent(id);
+      set((state) => ({ lobsters: state.lobsters.filter(l => l.id !== id) }));
+      return;
+    }
     const token = useAuthStore.getState().token;
     await fetch(`${API_BASE}/api/agents/${id}`, {
       method: 'DELETE',
@@ -518,12 +581,26 @@ export const useStore = create<LobsterStore>()(
   })),
 
   createProjectAPI: async (data) => {
+    const desktop = getOpenClawDesktop();
+    if (desktop?.createLocalProject) {
+      const project = await desktop.createLocalProject(data);
+      set((state) => ({ projects: [project, ...state.projects.filter((item) => item.id !== project.id)] }));
+      return project;
+    }
     const project = await api.createProject(data);
     set((state) => ({ projects: [project, ...state.projects] }));
     return project;
   },
 
   updateProjectAPI: async (projectId, data) => {
+    const desktop = getOpenClawDesktop();
+    if (desktop?.updateLocalProject) {
+      const project = await desktop.updateLocalProject(projectId, data);
+      set((state) => ({
+        projects: state.projects.map((item) => (item.id === projectId ? project : item)),
+      }));
+      return project;
+    }
     const project = await api.updateProject(projectId, data);
     set((state) => ({
       projects: state.projects.map((item) => (item.id === projectId ? project : item)),
@@ -532,6 +609,14 @@ export const useStore = create<LobsterStore>()(
   },
 
   openProjectAPI: async (projectId) => {
+    const desktop = getOpenClawDesktop();
+    if (desktop?.openLocalProject) {
+      const project = await desktop.openLocalProject(projectId);
+      set((state) => ({
+        projects: [project, ...state.projects.filter((item) => item.id !== projectId)],
+      }));
+      return project;
+    }
     const project = await api.openProject(projectId);
     set((state) => ({
       projects: [project, ...state.projects.filter((item) => item.id !== projectId)],
@@ -540,6 +625,14 @@ export const useStore = create<LobsterStore>()(
   },
 
   deleteProjectAPI: async (projectId) => {
+    const desktop = getOpenClawDesktop();
+    if (desktop?.deleteLocalProject) {
+      await desktop.deleteLocalProject(projectId);
+      set((state) => ({
+        projects: state.projects.filter((item) => item.id !== projectId),
+      }));
+      return;
+    }
     await api.deleteProject(projectId);
     set((state) => ({
       projects: state.projects.filter((item) => item.id !== projectId),
@@ -556,6 +649,21 @@ export const useStore = create<LobsterStore>()(
 
   // Initialize - fetch data from API
   initialize: async () => {
+    const desktop = getOpenClawDesktop();
+    if (desktop) {
+      try {
+        await Promise.all([
+          get().fetchAgents(),
+          get().fetchProjects(),
+        ]);
+        set({ isInitialized: true });
+      } catch (error) {
+        console.error('Failed to initialize desktop store:', error);
+        set({ isInitialized: true });
+      }
+      return;
+    }
+
     const token = useAuthStore.getState().token;
     if (!token) {
       set({ isInitialized: true });

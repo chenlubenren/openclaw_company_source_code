@@ -13,6 +13,7 @@
     "smoke:workflow:condition": "tsx src/scripts/smoke-workflow-condition-branch.ts",
     "smoke:workflow:fallback": "tsx src/scripts/smoke-workflow-cli-fallback-handoff.ts",
     "smoke:workflow:project": "tsx src/scripts/smoke-workflow-project-handoff.ts",
+    "smoke:windows-no-wsl": "tsx src/scripts/smoke-windows-no-wsl-runtime.ts",
     "smoke:http": "tsx src/scripts/smoke-http-project-upload.ts",
     "smoke:http:workflow": "tsx src/scripts/smoke-http-workflow-handoff.ts",
     "smoke:runtime": "tsx src/scripts/smoke-runtime-health.ts",

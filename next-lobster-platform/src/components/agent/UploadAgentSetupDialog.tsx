@@ -44,6 +44,7 @@ interface UploadAgentSetupDialogProps {
   onForceManualTypeChange: (value: boolean) => void;
   showTypePicker: boolean;
   isDetecting: boolean;
+  marketPublishEnabled?: boolean;
   publishToMarket: boolean;
   onPublishToMarketChange: (value: boolean) => void;
   isScanning: boolean;
@@ -53,6 +54,8 @@ interface UploadAgentSetupDialogProps {
   isUploading: boolean;
   uploadProgress: number;
   error: string;
+  submitLabel?: string;
+  uploadingLabel?: string;
   onClose: () => void;
   onSubmit: (payload: UploadSetupPayload) => void;
 }
@@ -156,6 +159,7 @@ export function UploadAgentSetupDialog({
   onForceManualTypeChange,
   showTypePicker,
   isDetecting,
+  marketPublishEnabled = true,
   publishToMarket,
   onPublishToMarketChange,
   isScanning,
@@ -165,6 +169,8 @@ export function UploadAgentSetupDialog({
   isUploading,
   uploadProgress,
   error,
+  submitLabel,
+  uploadingLabel,
   onClose,
   onSubmit,
 }: UploadAgentSetupDialogProps) {
@@ -190,6 +196,8 @@ export function UploadAgentSetupDialog({
   );
   const currentPreviewUrl = avatarMode === 'pixel' ? pixelPreviewUrl : randomAvatarUrl;
   const finalError = setupError || error;
+  const effectiveSubmitLabel = submitLabel || (publishToMarket ? '完成设置并上传上架' : '完成设置并上传');
+  const effectiveUploadingLabel = uploadingLabel || '上传中';
 
   if (!open) return null;
 
@@ -440,6 +448,7 @@ export function UploadAgentSetupDialog({
                   />
                 </div>
 
+                {marketPublishEnabled && (
                 <div className="border-4 border-pixel-black bg-pixel-cream/50 p-4">
                   <div className="flex items-center justify-between gap-4">
                     <div>
@@ -489,6 +498,7 @@ export function UploadAgentSetupDialog({
                     </div>
                   )}
                 </div>
+                )}
 
                 {isUploading && (
                   <div>
@@ -496,7 +506,7 @@ export function UploadAgentSetupDialog({
                       <motion.div className="h-full bg-pixel-green" animate={{ width: `${uploadProgress}%` }} />
                     </div>
                     <p className="mt-2 text-center font-pixel text-sm text-pixel-black/70">
-                      上传中... {uploadProgress}%
+                      {effectiveUploadingLabel}... {uploadProgress}%
                     </p>
                   </div>
                 )}
@@ -509,10 +519,8 @@ export function UploadAgentSetupDialog({
                   className="w-full"
                 >
                   {isUploading
-                    ? `上传中... ${uploadProgress}%`
-                    : publishToMarket
-                      ? '完成设置并上传上架'
-                      : '完成设置并上传'}
+                    ? `${effectiveUploadingLabel}... ${uploadProgress}%`
+                    : effectiveSubmitLabel}
                 </PixelButton>
               </div>
             </section>

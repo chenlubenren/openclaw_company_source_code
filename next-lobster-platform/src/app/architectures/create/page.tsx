@@ -202,16 +202,27 @@ function CreateArchitecturePageInner() {
   };
 
   return (
-    <div className="max-w-[1600px] mx-auto">
-      <BackButton href="/" />
+    <div className="mx-auto -mt-2 max-w-[1600px] md:mt-0">
+      <div className="mb-2 flex items-center gap-3 md:hidden">
+        <div className="shrink-0 [&>div]:mb-0">
+          <BackButton href="/" />
+        </div>
+        <h1 className="chinese-large text-2xl font-bold leading-none text-pixel-black">
+          创建团队
+        </h1>
+      </div>
+
+      <div className="hidden md:block">
+        <BackButton href="/" />
+      </div>
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mt-2"
+        className="mt-0 md:mt-2"
       >
         {/* Header */}
-        <div className="text-center mb-3">
+        <div className="mb-3 hidden text-center md:block">
           <h1 className="chinese-large text-2xl text-pixel-black font-bold mb-1">
             创建团队
           </h1>
@@ -221,13 +232,14 @@ function CreateArchitecturePageInner() {
         </div>
 
         {/* Mode Tabs */}
-        <div className="flex gap-2 mb-3 justify-center">
+        <div className="mb-2 flex gap-2 justify-center md:mb-3">
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={() => setMode('canvas')}
             className={`
-              px-4 py-2 border-4 border-pixel-black font-pixel text-sm
+              flex-1 px-2 py-2 border-4 border-pixel-black font-pixel text-xs
               transition-all
+              md:flex-none md:px-4 md:text-sm
               ${mode === 'canvas'
                 ? 'bg-pixel-blue text-pixel-white'
                 : 'bg-pixel-white text-pixel-black hover:bg-pixel-gray'
@@ -241,8 +253,9 @@ function CreateArchitecturePageInner() {
             whileTap={{ scale: 0.95 }}
             onClick={() => setMode('chat')}
             className={`
-              px-4 py-2 border-4 border-pixel-black font-pixel text-sm
+              flex-1 px-2 py-2 border-4 border-pixel-black font-pixel text-xs
               transition-all
+              md:flex-none md:px-4 md:text-sm
               ${mode === 'chat'
                 ? 'bg-pixel-blue text-pixel-white'
                 : 'bg-pixel-white text-pixel-black hover:bg-pixel-gray'
@@ -309,7 +322,7 @@ function CreateArchitecturePageInner() {
         </div>
 
         {/* Mode Content */}
-        <div className="mb-4" style={{ height: '490px' }}>
+        <div className="mb-4 h-[470px] md:h-[490px]">
           {mode === 'canvas' ? (
             <NodeCanvas
               key={`${activeTemplate?.id ?? 'default'}-${canvasVersion}`}

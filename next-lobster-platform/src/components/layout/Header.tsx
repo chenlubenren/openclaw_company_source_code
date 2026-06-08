@@ -6,11 +6,14 @@ import { useState } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UserMenu } from '@/components/user/UserMenu';
+import { useOpenClawDesktopBridge } from '@/lib/desktop';
 
 export function Header() {
   const { user, token } = useAuthStore();
   const router = useRouter();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const desktopBridge = useOpenClawDesktopBridge();
+  const isDesktop = Boolean(desktopBridge);
 
   return (
     <header className="bg-pixel-black border-b-4 border-pixel-white px-4 py-3">
@@ -30,7 +33,14 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-4">
-          {user && token ? (
+          {isDesktop ? (
+            <div
+              className="border-2 border-pixel-white bg-pixel-green px-3 py-1 font-pixel text-xs text-pixel-black"
+              style={{ boxShadow: '2px 2px 0px 0px #101010' }}
+            >
+              LOCAL DESKTOP
+            </div>
+          ) : user && token ? (
             <div className="relative">
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}

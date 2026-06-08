@@ -19,7 +19,7 @@ import integrationsRoutes from './routes/integrations.routes.js';
 import { initWorkspaceRoot, resolveStoredPath } from './services/workspace.service.js';
 import { startChatServer } from './services/chat-websocket.service.js';
 import { agentRunner } from './services/agent-runner.service.js';
-import { cleanInvalidMarketAgents, cacheAllMarketAgentIcons } from './services/market.service.js';
+import { cleanInvalidMarketAgents, cacheAllMarketAgentIcons, ensureOfficialAgentMarketEntry } from './services/market.service.js';
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -27,6 +27,8 @@ const WS_PORT = process.env.WS_PORT || 3003;
 const DEFAULT_CORS_ORIGINS = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
+  'http://localhost:3001',
+  'http://127.0.0.1:3001',
   'http://localhost:3010',
   'http://127.0.0.1:3010',
 ];
@@ -118,6 +120,11 @@ app.get('/api/agents/:agentId/avatar/:filename', (req, res) => {
 // Cleanup invalid market agents and cache icons on startup
 (async () => {
   try {
+    const officialResult = await ensureOfficialAgentMarketEntry({ forceSyncWorkspace: true });
+    if (!officialResult.success) {
+      console.warn('Official agent market sync skipped:', officialResult.error);
+    }
+
     const cleanResult = await cleanInvalidMarketAgents();
     if (cleanResult.deleted > 0) {
       console.log(`🧹 Cleaned ${cleanResult.deleted} invalid market agents`);

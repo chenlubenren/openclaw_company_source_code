@@ -89,7 +89,7 @@ const RUNTIME_PLATFORM_SPECS: RuntimePlatformSpec[] = [
     label: 'OpenClaw',
     providerType: 'openclaw',
     envVarNames: ['OPENCLAW_API_KEY', 'OPENAI_API_KEY'],
-    installHint: '安装 OpenClaw CLI；Windows 环境需确保 WSL 中可运行 openclaw。',
+    installHint: '安装 OpenClaw CLI，并确保 openclaw 在当前系统 PATH 中可执行；Windows 桌面端使用本机 CLI，不依赖 WSL。',
   },
 ];
 
@@ -104,10 +104,10 @@ function cliIssueMessage(spec: RuntimePlatformSpec, cli: CliHealthCheck): string
     return `${spec.label} CLI 未找到：${cli.command} 不在 PATH 中。`;
   }
   if (cli.errorCode === 'EINVAL') {
-    return `${spec.label} CLI 启动失败：spawn EINVAL，通常是命令路径或 Windows/WSL 启动参数不可执行。`;
+    return `${spec.label} CLI 启动失败：spawn EINVAL，通常是命令路径或当前系统启动参数不可执行。`;
   }
   if (cli.usesWsl) {
-    return `WSL/OpenClaw 预检失败：${detail || 'wsl 或 WSL 内的 openclaw 不可用。'}`;
+    return `CLI 预检失败：${detail || cli.displayCommand}`;
   }
   if (cli.status != null) {
     return `${spec.label} CLI 预检退出码 ${cli.status}：${detail || cli.displayCommand}`;

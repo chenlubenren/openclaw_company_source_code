@@ -26,6 +26,7 @@ import {
   type AgentUserConfig,
 } from '../services/agent.service.js';
 import {
+  adoptOfficialAgentToUser,
   getPublishedMarketAgentForInstance,
   publishAgentToMarket,
   unpublishAgentFromMarket,
@@ -38,11 +39,6 @@ import { getProviderById } from '../services/provider.service.js';
 import { agentRunner, formatCliHealthFailure, type AgentPlatform } from '../services/agent-runner.service.js';
 import { executeCozeAgentTurn, getCozeRuntimeInfo } from '../services/coze-market.service.js';
 import {
-  cloneDirectory,
-  deleteDirectory,
-  generateAgentKey,
-  getAgentBaselinePath,
-  getAgentWorkspacePath,
   getTeaPartyAgentRuntimePath,
   resolveStoredPath,
 } from '../services/workspace.service.js';
@@ -1399,156 +1395,28 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
-// POST /api/agents/official-lobster/adopt - Adopt a local copy of the current official lobster template
+// POST /api/agents/official-lobster/adopt - Adopt a local copy of the fixed official Agent
 router.post('/official-lobster/adopt', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user!.userId;
     const requestedName = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
-    if (!requestedName) {
-      res.status(400).json({ message: '请先给官方龙虾起一个名字' });
+    const result = await adoptOfficialAgentToUser(userId, requestedName);
+
+    if (!result.success || !result.agentId) {
+      res.status(400).json({ message: result.error || '官方 Agent 领养失败' });
       return;
     }
 
-    const rawDb = getRawDb();
-    const template = rawDb.prepare(`
-      SELECT
-        id,
-        name,
-        description,
-        avatar,
-        workspace_path AS workspacePath,
-        manifest,
-        tags
-      FROM user_agent_instances
-      WHERE name = ?
-      ORDER BY updated_at DESC
-      LIMIT 1
-    `).get('官方龙虾') as {
-      id: string;
-      name: string;
-      description?: string;
-      avatar?: string;
-      workspacePath?: string;
-      manifest?: string;
-      tags?: string;
-    } | undefined;
-
-    const agentId = crypto.randomUUID().replace(/-/g, '');
-    const workspacePath = getAgentWorkspacePath(userId, agentId);
-    const baselinePath = getAgentBaselinePath(userId, agentId);
-    const agentRoot = path.dirname(workspacePath);
-    const now = Date.now();
-
-    let manifest: Record<string, unknown> = {
-      schemaVersion: '1.0',
-      name: requestedName,
-      description: '从官方龙虾快速领养得到的 Agent。',
-      entrypoint: { type: 'openclaw' },
-      metadata: { source: 'official-lobster' },
-    };
-
-    try {
-      if (template?.workspacePath && fs.existsSync(resolveStoredPath(template.workspacePath))) {
-        if (!cloneDirectory(resolveStoredPath(template.workspacePath), workspacePath)) {
-          deleteDirectory(agentRoot);
-          res.status(500).json({ message: '复制官方龙虾模板失败' });
-          return;
-        }
-      } else {
-        fs.mkdirSync(workspacePath, { recursive: true });
-      }
-
-      deleteDirectory(path.join(workspacePath, '.openclaw'));
-      deleteDirectory(path.join(workspacePath, '.claude'));
-
-      if (template?.manifest) {
-        try {
-          const parsed = JSON.parse(template.manifest);
-          if (parsed && typeof parsed === 'object') {
-            manifest = parsed as Record<string, unknown>;
-          }
-        } catch {
-          // Keep fallback manifest.
-        }
-      }
-
-      manifest = {
-        ...manifest,
-        name: requestedName,
-        description: template?.description || String(manifest.description || '从官方龙虾快速领养得到的 Agent。'),
-        metadata: {
-          ...((manifest.metadata && typeof manifest.metadata === 'object') ? manifest.metadata as Record<string, unknown> : {}),
-          source: 'official-lobster',
-          sourceAgentId: template?.id || null,
-        },
-      };
-
-      fs.writeFileSync(path.join(workspacePath, 'agent.manifest.json'), JSON.stringify(manifest, null, 2), 'utf-8');
-      fs.writeFileSync(
-        path.join(workspacePath, 'agent.config.json'),
-        JSON.stringify(
-          {
-            agentId,
-            name: requestedName,
-            description: template?.description || String(manifest.description || ''),
-            avatar: template?.avatar || '',
-            platform: getPlatformFromManifest(JSON.stringify(manifest)) || 'openclaw',
-            providerId: null,
-            updatedAt: new Date(now).toISOString(),
-          },
-          null,
-          2
-        ),
-        'utf-8'
-      );
-
-      cloneDirectory(workspacePath, baselinePath);
-
-      rawDb.prepare(`
-        INSERT INTO user_agent_instances (
-          id, user_id, source_market_agent_id, source_version, name, description,
-          avatar, agent_key, workspace_path, state_dir, baseline_snapshot_path, status,
-          manifest, tags, cave_id, provider_id, conversation_count, total_messages,
-          last_active_at, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(
-        agentId,
-        userId,
-        null,
-        template?.id ? `official:${template.id}` : 'official:lobster',
-        requestedName,
-        template?.description || String(manifest.description || ''),
-        template?.avatar || '',
-        generateAgentKey(),
-        workspacePath,
-        path.join(workspacePath, '.openclaw'),
-        baselinePath,
-        'idle',
-        JSON.stringify(manifest),
-        JSON.stringify(['official-lobster', 'quick-adopt']),
-        null,
-        null,
-        0,
-        0,
-        null,
-        now,
-        now
-      );
-
-      const agent = await getAgentByIdAndUser(agentId, userId);
-      if (!agent) {
-        res.status(500).json({ message: '官方龙虾领养失败' });
-        return;
-      }
-
-      res.status(201).json({ agent: await withAgentCardMeta(agent, userId) });
-    } catch (error) {
-      deleteDirectory(agentRoot);
-      throw error;
+    const agent = await getAgentByIdAndUser(result.agentId, userId);
+    if (!agent) {
+      res.status(500).json({ message: '官方 Agent 领养失败' });
+      return;
     }
+
+    res.status(201).json({ agent: await withAgentCardMeta(agent, userId) });
   } catch (error) {
-    console.error('Adopt official lobster error:', error);
-    res.status(500).json({ message: error instanceof Error ? error.message : '官方龙虾领养失败' });
+    console.error('Adopt official agent error:', error);
+    res.status(500).json({ message: error instanceof Error ? error.message : '官方 Agent 领养失败' });
   }
 });
 

@@ -356,7 +356,7 @@ queued -> starting -> running -> waiting_agent -> collecting -> completed
 当前项目在 Windows J 盘：
 
 ```text
-J:\Desktop\code练习\cursor_project\openclaw_company_source_code
+<project-root>
 ```
 
 在 WSL 中大致对应：

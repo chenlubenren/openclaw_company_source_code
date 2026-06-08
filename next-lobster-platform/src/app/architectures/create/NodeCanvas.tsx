@@ -531,6 +531,7 @@ export default function NodeCanvas({
   const [showLobsterPicker, setShowLobsterPicker] = useState(false);
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
+  const [showMobileNodePanel, setShowMobileNodePanel] = useState(false);
 
   const { lobsters } = useStore();
 
@@ -625,6 +626,9 @@ export default function NodeCanvas({
     (_: React.MouseEvent, node: Node) => {
       setSelectedNodeId(node.id);
       setSelectedEdgeId(null);
+      if (window.matchMedia('(max-width: 767px)').matches) {
+        setShowMobileNodePanel(true);
+      }
     },
     []
   );
@@ -642,6 +646,7 @@ export default function NodeCanvas({
     setSelectedEdgeId(null);
     setShowAddMenu(false);
     setShowTemplateMenu(false);
+    setShowMobileNodePanel(false);
   }, []);
 
   // Update any field on a node
@@ -704,6 +709,9 @@ export default function NodeCanvas({
       setSelectedNodeId(id);
       setShowAddMenu(false);
       setShowTemplateMenu(false);
+      if (window.matchMedia('(max-width: 767px)').matches) {
+        setShowMobileNodePanel(true);
+      }
     },
     [nodes, setNodes, syncAgents]
   );
@@ -755,10 +763,10 @@ export default function NodeCanvas({
   );
 
   return (
-    <div className="flex h-full gap-4">
+    <div className="relative h-full md:flex md:gap-4">
       {/* Canvas */}
       <div
-        className="relative flex-1 bg-pixel-white border-4 border-pixel-black"
+        className="relative h-full min-h-[420px] flex-1 bg-pixel-white border-4 border-pixel-black"
         style={{ boxShadow: '6px 6px 0px 0px #101010' }}
       >
         <ReactFlow
@@ -782,7 +790,7 @@ export default function NodeCanvas({
           <Background color="#101010" gap={20} />
           <Controls className="!bg-pixel-white !border-pixel-black !shadow-none" />
           <MiniMap
-            className="!bg-pixel-white !border-pixel-black"
+            className="hidden !bg-pixel-white !border-pixel-black md:block"
             style={{ width: 120, height: 86 }}
             nodeColor={(node) => {
               if (node.type === 'conditionNode') return '#a855f7';
@@ -796,7 +804,7 @@ export default function NodeCanvas({
         </ReactFlow>
 
         {/* Toolbar */}
-        <div className="absolute top-3 left-3 flex items-start gap-2 z-10">
+        <div className="absolute left-2 top-2 z-10 flex max-w-[calc(100%-1rem)] items-start gap-2 md:left-3 md:top-3">
           <div className="flex flex-col gap-2">
           {/* Add node menu */}
           <div className="relative">
@@ -893,15 +901,25 @@ export default function NodeCanvas({
               onClick={() => setShowLobsterPicker(true)}
               variant="secondary"
               size="sm"
+              className="hidden md:inline-block"
             >
               🟢 关联Agent
             </PixelButton>
           )}
         </div>
 
+        <button
+          type="button"
+          onClick={() => setShowMobileNodePanel(true)}
+          className="absolute right-2 top-2 z-10 border-3 border-pixel-black bg-pixel-yellow px-3 py-2 font-pixel text-xs text-pixel-black md:hidden"
+          style={{ boxShadow: '3px 3px 0px 0px #101010' }}
+        >
+          {selectedNode ? '编辑节点' : '节点列表'}
+        </button>
+
         {/* Edge delete banner */}
         {selectedEdgeId && (
-          <div className="absolute top-3 right-3 z-10">
+          <div className="absolute right-2 top-14 z-10 md:right-3 md:top-3">
             <div
               className="bg-pixel-yellow border-3 border-pixel-black px-3 py-2 font-pixel text-sm text-pixel-black flex items-center gap-2"
               style={{ boxShadow: '3px 3px 0px 0px #101010' }}
@@ -917,20 +935,33 @@ export default function NodeCanvas({
             </div>
           </div>
         )}
-
-        {/* Hint */}
-        <div className="absolute bottom-3 left-3 z-10 bg-pixel-black/80 text-pixel-white px-3 py-2 font-pixel text-xs">
-          💡 悬停连线出现 × 点击删除 | 拖拽节点边缘画线连接
-        </div>
       </div>
 
       {/* Side panel */}
-      <div className="w-72 flex flex-col gap-4">
+      <div
+        className={`fixed inset-0 z-[80] items-end bg-pixel-black/70 p-3 md:static md:z-auto md:flex md:w-72 md:flex-col md:items-stretch md:gap-4 md:bg-transparent md:p-0 ${
+          showMobileNodePanel ? 'flex' : 'hidden md:flex'
+        }`}
+        onClick={() => setShowMobileNodePanel(false)}
+      >
         <div
-          className="bg-pixel-white border-4 border-pixel-black p-4 flex-1 overflow-y-auto"
+          className="max-h-[82dvh] w-full flex-none overflow-y-auto bg-pixel-white border-4 border-pixel-black p-4 md:max-h-none md:flex-1"
           style={{ boxShadow: '6px 6px 0px 0px #101010' }}
+          onClick={(event) => event.stopPropagation()}
         >
-          <h3 className="font-pixel text-base text-pixel-black mb-3">
+          <div className="mb-3 flex items-center justify-between gap-3 md:hidden">
+            <p className="font-pixel text-sm font-bold text-pixel-black">
+              {selectedNode ? '编辑节点' : '节点列表'}
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowMobileNodePanel(false)}
+              className="border-2 border-pixel-black bg-pixel-white px-2 py-1 font-pixel text-sm leading-none text-pixel-black"
+            >
+              ×
+            </button>
+          </div>
+          <h3 className="mb-3 hidden font-pixel text-base text-pixel-black md:block">
             {selectedNode ? '编辑节点' : '节点列表'}
           </h3>
 
