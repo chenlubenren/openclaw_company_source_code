@@ -199,6 +199,7 @@ export const projects = sqliteTable('projects', {
   icon: text('icon').notNull().default('/project-icons/folder-blue.svg'),
   workspacePath: text('workspace_path').notNull(),
   teamIds: text('team_ids').notNull().default('[]'),
+  agentIds: text('agent_ids').notNull().default('[]'),
   ganttEnabled: integer('gantt_enabled', { mode: 'boolean' }).notNull().default(false),
   ganttPlan: text('gantt_plan').notNull().default('[]'),
   gitRemote: text('git_remote').notNull().default(''),

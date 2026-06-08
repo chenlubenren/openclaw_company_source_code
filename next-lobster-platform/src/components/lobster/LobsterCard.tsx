@@ -175,7 +175,7 @@ export function LobsterCard({
       className={`group/lobster-card relative w-full h-full min-h-[360px] md:min-h-[320px] flex flex-col ${silhouette ? 'pointer-events-none' : ''}`}
     >
       {lobster.isPublishedToMarket && !silhouette && (
-        <div className="absolute top-2 left-2 z-20 px-2.5 py-1.5 md:px-2 md:py-1 bg-pixel-yellow text-pixel-black border-2 border-pixel-black font-pixel text-sm md:text-[10px] font-bold">
+        <div className="absolute top-1.5 left-1.5 z-20 px-1.5 py-0.5 bg-pixel-yellow text-pixel-black border-2 border-pixel-black font-pixel text-[10px] md:text-[9px] font-bold leading-none">
           已上架
         </div>
       )}
@@ -246,7 +246,6 @@ export function LobsterCard({
             silhouette={silhouette}
             showProviderStatus={!silhouette}
             providerConfigured={providerConfigured}
-            animateStatus={false}
           />
           {!silhouette && (
             <>

@@ -41,19 +41,20 @@ assert(mobileNav.includes('MOBILE_DISPLAY_MODE_STORAGE_KEY'), 'Mobile display mo
 assert(mobileNav.includes('useMobileDisplayMode'), 'Mobile display mode hook is missing.');
 assert(mobileNav.includes('data-mobile-display-mode={displayMode}'), 'Mobile nav mode data hook is missing.');
 assert(mobileNav.includes("localStorage.setItem(MOBILE_DISPLAY_MODE_STORAGE_KEY, mode)"), 'Mobile display mode must persist to localStorage.');
-assert(mobileNav.includes("careMode ? 'min-h-[128px]"), 'Care mode must preserve large nav tap targets.');
-assert(mobileNav.includes(": 'min-h-[76px]"), 'Normal mode must use WeChat-like compact nav height.');
-assert(mobileNav.includes("careMode ? 'h-[clamp(58px,15vw,74px)] w-[clamp(58px,15vw,74px)]"), 'Care mode must preserve large responsive icons.');
-assert(mobileNav.includes(": 'h-[32px] w-[32px]"), 'Normal mode must use compact nav icons.');
+assert(mobileNav.includes("careMode ? 'min-h-[104px]"), 'Care mode must preserve large nav tap targets.');
+assert(mobileNav.includes(": 'min-h-[62px]"), 'Normal mode must use WeChat-like compact nav height.');
+assert(mobileNav.includes("careMode ? 'h-[clamp(48px,13vw,62px)] w-[clamp(48px,13vw,62px)]"), 'Care mode must preserve large responsive icons.');
+assert(mobileNav.includes(": 'h-[28px] w-[28px]"), 'Normal mode must use compact nav icons.');
 assert(mobileNav.includes("'h-[22px] w-[22px]'"), 'Compact inner nav icons must stay small.');
 assert(mobileNav.includes('md:hidden'), 'Mobile nav must remain hidden on desktop.');
-assert(mobileNav.includes("pathname.startsWith('/agent-tea-party')) return 'projects'"), 'Tea party must stay under the mobile projects tab.');
+assert(mobileNav.includes("pathname.startsWith('/agent-tea-party')) return 'teams'"), 'Tea party must stay under the mobile teams tab.');
 assert(mobileNav.includes("pathname.startsWith('/architectures')) return 'teams'"), 'Team pages must stay under the mobile teams tab.');
 assert(mobileNav.includes("pathname.startsWith('/agent/') || pathname === '/agent'"), 'Single-agent pages must stay under the mobile contacts tab.');
 
 assert(clientLayout.includes('MobileAppNav'), 'Client layout must render MobileAppNav.');
 assert(clientLayout.includes('data-app-main="true"'), 'App main must expose a hook for mobile display mode padding.');
-assert(clientLayout.includes('pb-28 md:pb-4'), 'Normal mobile content bottom padding must be compact without changing desktop.');
+assert(clientLayout.includes('pb-0 md:pb-4'), 'Normal mobile content must avoid extra bottom padding without changing desktop.');
+assert(clientLayout.includes("pathname.startsWith('/agent/') || pathname.startsWith('/agent-tea-party')"), 'Mobile chat routes must use a full-screen app shell.');
 
 assert(globals.includes('@media (max-width: 767px)'), 'Mobile media query is missing.');
 assert(globals.includes('body {\n    font-size: 16px;'), 'Normal mobile body font must be compact by default.');
@@ -66,14 +67,14 @@ assert(globals.includes('[data-mobile-app-nav="true"]'), 'Mobile nav CSS fallbac
 assert(globals.includes('position: fixed;'), 'Mobile nav CSS fallback must force fixed positioning.');
 assert(globals.includes('display: grid;'), 'Mobile nav CSS fallback must force grid layout.');
 assert(globals.includes('grid-template-columns: repeat(5, minmax(0, 1fr));'), 'Mobile nav CSS fallback must keep five equal columns.');
-assert(globals.includes('min-height: 76px;'), 'Normal mobile nav CSS fallback must be compact.');
-assert(globals.includes('width: 32px;'), 'Normal mobile nav icon CSS fallback must be compact.');
-assert(globals.includes('height: 32px;'), 'Normal mobile nav icon CSS fallback must be compact.');
+assert(globals.includes('min-height: 62px;'), 'Normal mobile nav CSS fallback must be compact.');
+assert(globals.includes('width: 28px;'), 'Normal mobile nav icon CSS fallback must be compact.');
+assert(globals.includes('height: 28px;'), 'Normal mobile nav icon CSS fallback must be compact.');
 assert(globals.includes('html[data-mobile-display-mode="care"] body'), 'Care mode CSS body override is missing.');
 assert(globals.includes('html[data-mobile-display-mode="care"] [data-mobile-app-nav="true"]'), 'Care mode nav CSS override is missing.');
 assert(globals.includes('html[data-mobile-display-mode="care"] [data-app-main="true"]'), 'Care mode main padding override is missing.');
-assert(globals.includes('width: clamp(58px, 15vw, 74px);'), 'Care mode must preserve responsive icon width.');
-assert(globals.includes('height: clamp(58px, 15vw, 74px);'), 'Care mode must preserve responsive icon height.');
+assert(globals.includes('width: clamp(48px, 13vw, 62px);'), 'Care mode must preserve responsive icon width.');
+assert(globals.includes('height: clamp(48px, 13vw, 62px);'), 'Care mode must preserve responsive icon height.');
 assert(globals.includes('white-space: nowrap;'), 'Mobile nav labels must stay on one line.');
 
 assert(homePage.includes('MobileDisplayModeSwitch'), 'Mobile Me page must expose display mode switch.');
@@ -87,8 +88,8 @@ console.log(JSON.stringify({
   mobileUiVerified: true,
   tabCount: expectedTabs.length,
   defaultMode: 'normal',
-  normalBottomNavMinHeight: 76,
-  careBottomNavMinHeight: 128,
+  normalBottomNavMinHeight: 62,
+  careBottomNavMinHeight: 104,
   desktopLayoutProtected: true,
   displayModeSwitch: true,
   cssFallbackHooks: [

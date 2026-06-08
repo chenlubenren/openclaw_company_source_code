@@ -1,6 +1,24 @@
-import { Lobster, Architecture, Message, Conversation, WorkflowDsl, WorkflowExecution, SessionMessage, WhiteboardNote, Project, ProjectInput, RuntimeHealth } from '@/types';
+import { Lobster, Architecture, Message, Conversation, WorkflowDsl, WorkflowExecution, SessionMessage, WhiteboardNote, Project, ProjectInput, ProjectFileContent, ProjectFileTree, RuntimeHealth } from '@/types';
 
 const API_BASE = 'http://localhost:3002';
+
+export type FeishuIntegrationScope = 'agent' | 'team';
+
+export interface FeishuWebhookInfo {
+  scope: FeishuIntegrationScope;
+  subjectId: string;
+  subjectName: string;
+  webhookUrl: string;
+  backendBaseUrl: string;
+  token: string;
+  envStatus: {
+    appIdConfigured: boolean;
+    appSecretConfigured: boolean;
+    verificationTokenConfigured: boolean;
+    webhookSecretConfigured: boolean;
+    publicBackendConfigured: boolean;
+  };
+}
 
 // Auth helper
 function getAuthHeaders(): Record<string, string> {
@@ -415,9 +433,12 @@ export async function uploadZip(
 // ==================== Architecture API ====================
 export async function fetchArchitectures(): Promise<Architecture[]> {
   try {
-    const res = await fetch(`${API_BASE}/architectures`);
+    const res = await fetch(`${API_BASE}/api/architectures`, {
+      headers: getAuthHeaders(),
+    });
     if (!res.ok) throw new Error('Failed to fetch');
-    return await res.json();
+    const payload = await res.json();
+    return Array.isArray(payload) ? payload : payload.architectures || [];
   } catch {
     return [];
   }
@@ -425,22 +446,43 @@ export async function fetchArchitectures(): Promise<Architecture[]> {
 
 export async function fetchArchitectureById(id: string): Promise<Architecture | null> {
   try {
-    const res = await fetch(`${API_BASE}/architectures/${id}`);
+    const res = await fetch(`${API_BASE}/api/architectures/${encodeURIComponent(id)}`, {
+      headers: getAuthHeaders(),
+    });
     if (!res.ok) throw new Error('Failed to fetch');
-    return await res.json();
+    const payload = await res.json();
+    return payload.architecture || payload;
   } catch {
     return null;
   }
 }
 
 export async function createArchitecture(data: Partial<Architecture>): Promise<Architecture> {
-  const res = await fetch(`${API_BASE}/architectures`, {
+  const res = await fetch(`${API_BASE}/api/architectures`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      ...getAuthHeaders(),
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error('Failed to create');
-  return res.json();
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(payload.message || 'Failed to create');
+  return payload.architecture || payload;
+}
+
+export async function updateArchitecture(id: string, data: Partial<Architecture>): Promise<Architecture> {
+  const res = await fetch(`${API_BASE}/api/architectures/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: {
+      ...getAuthHeaders(),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(payload.message || 'Failed to update');
+  return payload.architecture || payload;
 }
 
 export async function updateArchitectureStatus(
@@ -535,6 +577,34 @@ export async function deleteProject(projectId: string): Promise<{ success: boole
   return payload;
 }
 
+export async function fetchProjectFiles(projectId: string, relativePath = ''): Promise<ProjectFileTree> {
+  const params = new URLSearchParams();
+  if (relativePath) params.set('path', relativePath);
+  const query = params.toString();
+  const res = await fetch(
+    `${API_BASE}/api/projects/${encodeURIComponent(projectId)}/files${query ? `?${query}` : ''}`,
+    { headers: getAuthHeaders() }
+  );
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(payload.message || '读取项目文件失败');
+  }
+  return payload.tree;
+}
+
+export async function fetchProjectFileContent(projectId: string, relativePath: string): Promise<ProjectFileContent> {
+  const params = new URLSearchParams({ path: relativePath });
+  const res = await fetch(
+    `${API_BASE}/api/projects/${encodeURIComponent(projectId)}/files/content?${params.toString()}`,
+    { headers: getAuthHeaders() }
+  );
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(payload.message || '读取文件内容失败');
+  }
+  return payload.file;
+}
+
 // ==================== Runtime Health API ====================
 export async function fetchRuntimeHealth(): Promise<RuntimeHealth> {
   const res = await fetch(`${API_BASE}/api/providers/runtime-health`, {
@@ -545,6 +615,22 @@ export async function fetchRuntimeHealth(): Promise<RuntimeHealth> {
     throw new Error(payload.message || '运行时预检失败');
   }
   return payload.health;
+}
+
+// ==================== Integrations API ====================
+export async function fetchFeishuWebhookInfo(
+  scope: FeishuIntegrationScope,
+  subjectId: string
+): Promise<FeishuWebhookInfo> {
+  const res = await fetch(
+    `${API_BASE}/api/integrations/feishu/webhook/${scope}/${encodeURIComponent(subjectId)}`,
+    { headers: getAuthHeaders() }
+  );
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(payload.message || '获取飞书接入信息失败');
+  }
+  return payload.integration;
 }
 
 // ==================== Workflow API ====================

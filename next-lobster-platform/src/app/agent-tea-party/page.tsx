@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BackButton } from '@/components/ui/BackButton';
 import { PixelButton } from '@/components/ui/PixelButton';
@@ -62,6 +63,15 @@ const AUTO_ROUND_DELAY_MS = [450, 1200] as const;
 const BETWEEN_SPEAKER_DELAY_MS = [150, 500] as const;
 const STOP_TOPIC_PATTERN = /停止这个话题|停止话题|暂停这个话题|结束这个话题|先停一下|stop this topic|stop topic/i;
 const DEFAULT_AGENT_AVATAR = '/lobsters/lobster-004.png';
+
+function goBackOrFallback(fallbackHref: string) {
+  if (typeof window === 'undefined') return;
+  if (window.history.length > 1) {
+    window.history.back();
+    return;
+  }
+  window.location.href = fallbackHref;
+}
 
 function makeId(prefix: string): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -381,14 +391,14 @@ function AddMemberModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-0 md:p-4"
       onClick={onClose}
     >
       <motion.div
         initial={{ opacity: 0, scale: 0.94, y: 16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.94, y: 16 }}
-        className="flex max-h-[86vh] w-full max-w-xl flex-col overflow-hidden border-4 border-pixel-black bg-pixel-white"
+        className="flex h-full max-h-none w-full max-w-none flex-col overflow-hidden border-4 border-pixel-black bg-pixel-white md:h-auto md:max-h-[86vh] md:max-w-xl"
         style={{ boxShadow: '8px 8px 0 #101010' }}
         onClick={(event) => event.stopPropagation()}
       >
@@ -419,7 +429,7 @@ function AddMemberModal({
                 className="flex items-center gap-3 border-2 border-pixel-black bg-pixel-white p-3"
                 style={{ boxShadow: '3px 3px 0 #101010' }}
               >
-                <LobsterSprite lobster={lobster} size="sm" showProviderStatus animateStatus={false} />
+                <LobsterSprite lobster={lobster} size="sm" showProviderStatus />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-pixel text-sm font-bold text-pixel-black">{lobster.name}</p>
                   <p className="truncate font-pixel text-xs text-pixel-black/60">{lobster.role || 'AI Agent'}</p>
@@ -603,14 +613,14 @@ function MembersModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-0 md:p-4"
       onClick={onClose}
     >
       <motion.div
         initial={{ opacity: 0, scale: 0.94, y: 16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.94, y: 16 }}
-        className="flex max-h-[86vh] w-full max-w-lg flex-col overflow-hidden border-4 border-pixel-black bg-pixel-white"
+        className="flex h-full max-h-none w-full max-w-none flex-col overflow-hidden border-4 border-pixel-black bg-pixel-white md:h-auto md:max-h-[86vh] md:max-w-lg"
         style={{ boxShadow: '8px 8px 0 #101010' }}
         onClick={(event) => event.stopPropagation()}
       >
@@ -638,7 +648,7 @@ function MembersModal({
           ) : (
             members.map((member) => (
               <div key={member.id} className="flex items-center gap-3 border-2 border-pixel-black p-3">
-                <LobsterSprite lobster={member} size="sm" showProviderStatus animateStatus={false} />
+                <LobsterSprite lobster={member} size="sm" showProviderStatus />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-pixel text-sm font-bold text-pixel-black">{member.name}</p>
                   <p className="truncate font-pixel text-xs text-pixel-black/60">{member.role || 'AI Agent'}</p>
@@ -863,14 +873,14 @@ function WhiteboardModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-0 md:p-4"
       onClick={onClose}
     >
       <motion.section
         initial={{ opacity: 0, scale: 0.96, y: 16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 16 }}
-        className="flex h-[90vh] w-[96vw] max-w-[1680px] flex-col overflow-hidden border-4 border-pixel-black bg-pixel-white"
+        className="flex h-full w-full max-w-none flex-col overflow-hidden border-4 border-pixel-black bg-pixel-white md:h-[90vh] md:w-[96vw] md:max-w-[1680px]"
         style={{ boxShadow: '10px 10px 0 #101010' }}
         onClick={(event) => event.stopPropagation()}
       >
@@ -1137,6 +1147,7 @@ function SessionDetail({
   onAddMember,
   onRemoveMember,
   onDelete,
+  onBackToList,
 }: {
   session: Session;
   lobsters: Lobster[];
@@ -1160,6 +1171,7 @@ function SessionDetail({
   onAddMember: () => void;
   onRemoveMember: (lobsterId: string) => void;
   onDelete: () => void;
+  onBackToList: () => void;
 }) {
   const { user } = useAuthStore();
   const members = lobsters.filter((lobster) => session.memberIds.includes(lobster.id));
@@ -1167,6 +1179,7 @@ function SessionDetail({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [boardOpen, setBoardOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [draftName, setDraftName] = useState(session.name);
 
@@ -1204,13 +1217,25 @@ function SessionDetail({
   const visibleMessages = messages.filter((message) => message.senderId !== 'system');
 
   return (
-    <div>
+    <div className="h-full min-h-0 md:h-auto">
       <section
-        className="flex min-h-0 flex-col border-4 border-pixel-black bg-pixel-white"
-        style={{ width: 928, height: 720, boxShadow: '5px 5px 0 #101010' }}
+        className="flex h-[100dvh] min-h-0 w-full flex-col border-y-4 border-pixel-black bg-pixel-white shadow-none md:h-[720px] md:w-[928px] md:border-4 md:shadow-[5px_5px_0_#101010]"
       >
-        <div className="flex items-center justify-between gap-3 border-b-4 border-pixel-black bg-pixel-blue px-4 py-3">
-          <GroupAvatar members={members} />
+        <div className="relative flex items-center justify-between gap-2 border-b-4 border-pixel-black bg-pixel-blue px-3 py-2 md:gap-3 md:px-4 md:py-3">
+          <button
+            type="button"
+            onClick={() => goBackOrFallback('/?mobileTab=teams')}
+            className="flex h-9 w-9 shrink-0 items-center justify-center border-2 border-pixel-black bg-pixel-white text-pixel-black md:hidden"
+            style={{ boxShadow: '2px 2px 0 #101010' }}
+            aria-label="返回上一页"
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true">
+              <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+            </svg>
+          </button>
+          <div className="hidden md:block">
+            <GroupAvatar members={members} />
+          </div>
           <div className="min-w-0 flex-1">
             {editingName ? (
               <input
@@ -1231,17 +1256,17 @@ function SessionDetail({
               <button
                 type="button"
                 onClick={() => setEditingName(true)}
-                className="block max-w-sm truncate text-left font-pixel text-lg font-bold text-pixel-white"
+                className="block max-w-sm truncate text-left font-pixel text-base font-bold leading-none text-pixel-white md:text-lg"
                 title="点击修改群名"
               >
                 {session.name}
               </button>
             )}
-            <p className="mt-1 font-pixel text-xs text-pixel-white/80">
+            <p className="mt-1 hidden font-pixel text-xs text-pixel-white/80 md:block">
               群聊讨论 · 输入 @ 选择参会 Agent
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="hidden shrink-0 items-center gap-2 md:flex">
             {isTopicActive && (
               <button
                 type="button"
@@ -1277,9 +1302,96 @@ function SessionDetail({
               解散
             </button>
           </div>
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen((open) => !open)}
+            className="flex h-9 w-9 shrink-0 items-center justify-center border-2 border-pixel-black bg-pixel-white font-pixel text-xl leading-none text-pixel-black md:hidden"
+            style={{ boxShadow: '2px 2px 0 #101010' }}
+            aria-label="更多设置"
+          >
+            ...
+          </button>
+          <AnimatePresence>
+            {mobileMenuOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                className="absolute right-3 top-[calc(100%+6px)] z-50 w-64 border-4 border-pixel-black bg-pixel-white p-2 md:hidden"
+                style={{ boxShadow: '4px 4px 0 #101010' }}
+              >
+                <div className="grid gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onBackToList();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="border-2 border-pixel-black bg-pixel-white px-3 py-2 text-left font-pixel text-xs text-pixel-black"
+                  >
+                    切换茶话会
+                  </button>
+                  {isTopicActive && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onStopTopic();
+                        setMobileMenuOpen(false);
+                      }}
+                      className="border-2 border-pixel-black bg-pixel-red px-3 py-2 text-left font-pixel text-xs text-pixel-white"
+                    >
+                      停止话题
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBoardOpen(true);
+                      setMobileMenuOpen(false);
+                    }}
+                    className="border-2 border-pixel-black bg-pixel-yellow px-3 py-2 text-left font-pixel text-xs text-pixel-black"
+                  >
+                    白板 {notes.length}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMembersOpen(true);
+                      setMobileMenuOpen(false);
+                    }}
+                    className="border-2 border-pixel-black bg-pixel-white px-3 py-2 text-left font-pixel text-xs text-pixel-black"
+                  >
+                    成员 {members.length}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onAddMember();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="border-2 border-pixel-black bg-pixel-blue px-3 py-2 text-left font-pixel text-xs text-pixel-white"
+                  >
+                    邀请 Agent
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onDelete();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="border-2 border-pixel-black bg-pixel-red px-3 py-2 text-left font-pixel text-xs text-pixel-white"
+                  >
+                    解散茶话会
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
-        <RunLogPanel logs={runLogs} runningAgents={runningAgents} />
+        <div className="hidden md:block">
+          <RunLogPanel logs={runLogs} runningAgents={runningAgents} />
+        </div>
 
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
           {visibleMessages.length === 0 ? (
@@ -1305,7 +1417,7 @@ function SessionDetail({
           <div className="relative">
             {mentionCandidates.length > 0 && (
               <div
-                className="absolute bottom-full left-0 z-20 mb-2 w-72 border-2 border-pixel-black bg-pixel-white"
+                className="absolute bottom-full left-0 z-20 mb-2 w-[calc(100vw-24px)] border-2 border-pixel-black bg-pixel-white md:w-72"
                 style={{ boxShadow: '4px 4px 0 #101010' }}
               >
                 <div className="border-b-2 border-pixel-black bg-pixel-yellow px-3 py-2 font-pixel text-xs text-pixel-black">
@@ -1318,7 +1430,7 @@ function SessionDetail({
                     onClick={() => insertMention(member.name)}
                     className="flex w-full items-center gap-2 border-b border-pixel-black/20 px-3 py-2 text-left hover:bg-pixel-black/5"
                   >
-                    <LobsterSprite lobster={member} size="sm" showProviderStatus animateStatus={false} />
+                    <LobsterSprite lobster={member} size="sm" showProviderStatus />
                     <span className="min-w-0 flex-1 truncate font-pixel text-xs text-pixel-black">@{member.name}</span>
                   </button>
                 ))}
@@ -1345,7 +1457,7 @@ function SessionDetail({
             />
           </div>
           <div className="mt-2 flex items-center justify-between gap-3">
-            <p className="font-pixel text-[11px] text-pixel-black/50">
+            <p className="hidden font-pixel text-[11px] text-pixel-black/50 md:block">
               Enter 发送，Shift + Enter 换行
             </p>
             <button
@@ -1412,8 +1524,11 @@ export default function AgentTeaPartyPage() {
     deleteWhiteboardNote,
   } = useStore();
   const { token, user } = useAuthStore();
+  const searchParams = useSearchParams();
+  const requestedSessionId = searchParams.get('sessionId');
 
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [mobileListOpen, setMobileListOpen] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newSessionName, setNewSessionName] = useState('');
@@ -1509,6 +1624,14 @@ export default function AgentTeaPartyPage() {
       window.clearInterval(timer);
     };
   }, [mergeTeaPartySessionState, sessionIdsKey, token]);
+
+  useEffect(() => {
+    if (!requestedSessionId) return;
+    if (sessions.some((session) => session.id === requestedSessionId)) {
+      setSelectedSessionId(requestedSessionId);
+      setMobileListOpen(false);
+    }
+  }, [requestedSessionId, sessions]);
 
   useEffect(() => {
     if (selectedSessionId && !selectedSession) {
@@ -1775,6 +1898,7 @@ export default function AgentTeaPartyPage() {
     if (!name) return;
     const sessionId = createSession(name, []);
     setSelectedSessionId(sessionId);
+    setMobileListOpen(false);
     setNewSessionName('');
     setShowCreate(false);
   };
@@ -1873,6 +1997,7 @@ export default function AgentTeaPartyPage() {
     });
     delete topicRuntimeRef.current[sessionId];
     setSelectedSessionId(null);
+    setMobileListOpen(true);
   };
 
   const selectedMessages = selectedSession
@@ -1884,13 +2009,15 @@ export default function AgentTeaPartyPage() {
   const runningSessionCount = Object.values(runningAgents).filter((agents) => agents.length > 0).length;
 
   return (
-    <div className="mx-auto max-w-7xl pb-16">
-      <BackButton href="/" />
+    <div className="h-[100dvh] overflow-hidden md:mx-auto md:max-w-7xl md:overflow-visible md:pb-16">
+      <div className="hidden md:block">
+        <BackButton href="/" />
+      </div>
 
       <motion.header
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
-        className="pt-2"
+        className="hidden pt-2 md:block"
       >
         <div className="flex flex-col gap-2 border-4 border-pixel-black bg-pixel-white px-3 py-1.5 md:flex-row md:items-center md:justify-between" style={{ boxShadow: '4px 4px 0 #101010' }}>
           <div>
@@ -1924,11 +2051,24 @@ export default function AgentTeaPartyPage() {
           </div>
         </section>
       ) : (
-        <div className="mt-3 grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
-          <aside className="space-y-4">
-            <section className="border-4 border-pixel-black bg-pixel-white p-4" style={{ boxShadow: '5px 5px 0 #101010' }}>
+        <div className="h-full min-h-0 md:mt-3 md:grid md:gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
+          <aside className={`${selectedSession && !mobileListOpen ? 'hidden' : 'block'} h-full min-h-0 md:block md:space-y-4`}>
+            <section className="flex h-full min-h-0 flex-col border-y-4 border-pixel-black bg-pixel-white p-3 shadow-none md:block md:h-auto md:border-4 md:p-4 md:shadow-[5px_5px_0_#101010]">
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="font-pixel text-base font-bold text-pixel-black">茶话会</h2>
+                <div className="flex min-w-0 items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => goBackOrFallback('/?mobileTab=teams')}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center border-2 border-pixel-black bg-pixel-white text-pixel-black md:hidden"
+                    style={{ boxShadow: '2px 2px 0 #101010' }}
+                    aria-label="返回上一页"
+                  >
+                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true">
+                      <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+                    </svg>
+                  </button>
+                  <h2 className="truncate font-pixel text-base font-bold text-pixel-black">茶话会</h2>
+                </div>
                 <button
                   type="button"
                   onClick={() => setShowCreate(true)}
@@ -1952,7 +2092,7 @@ export default function AgentTeaPartyPage() {
                   </button>
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="min-h-0 flex-1 space-y-2 overflow-y-auto md:overflow-visible">
                   {sessions.map((session) => {
                     const isSelected = session.id === selectedSessionId;
                     const isRunning = (runningAgents[session.id] || []).length > 0;
@@ -1961,7 +2101,10 @@ export default function AgentTeaPartyPage() {
                       <button
                         key={session.id}
                         type="button"
-                        onClick={() => setSelectedSessionId(session.id)}
+                        onClick={() => {
+                          setSelectedSessionId(session.id);
+                          setMobileListOpen(false);
+                        }}
                         className={`block w-full border-2 border-pixel-black p-3 text-left ${
                           isSelected ? 'bg-pixel-blue/15' : 'bg-pixel-white hover:bg-pixel-black/5'
                         }`}
@@ -1989,7 +2132,7 @@ export default function AgentTeaPartyPage() {
             </section>
           </aside>
 
-          <main className="min-w-0">
+          <main className={`${selectedSession && !mobileListOpen ? 'block' : 'hidden'} h-full min-h-0 min-w-0 md:block`}>
             {selectedSession ? (
               <SessionDetail
                 session={selectedSession}
@@ -2014,6 +2157,7 @@ export default function AgentTeaPartyPage() {
                 onAddMember={() => setShowAddModal(true)}
                 onRemoveMember={(lobsterId) => removeMemberFromSession(selectedSession.id, lobsterId)}
                 onDelete={() => handleDeleteSession(selectedSession.id)}
+                onBackToList={() => setMobileListOpen(true)}
               />
             ) : (
               <section className="flex min-h-[620px] flex-col items-center justify-center border-4 border-pixel-black bg-pixel-white p-8 text-center" style={{ boxShadow: '5px 5px 0 #101010' }}>
@@ -2038,14 +2182,14 @@ export default function AgentTeaPartyPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-0 md:p-4"
             onClick={() => setShowCreate(false)}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.94, y: 16 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.94, y: 16 }}
-              className="w-full max-w-md overflow-hidden border-4 border-pixel-black bg-pixel-white"
+              className="h-full w-full max-w-none overflow-hidden border-4 border-pixel-black bg-pixel-white md:h-auto md:max-w-md"
               style={{ boxShadow: '8px 8px 0 #101010' }}
               onClick={(event) => event.stopPropagation()}
             >

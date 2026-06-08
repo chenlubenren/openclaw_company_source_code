@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useStore } from '@/store/useStore';
@@ -7,9 +8,15 @@ import { Architecture, ArchitectureAgent, Lobster } from '@/types';
 import { PixelCard } from '@/components/ui/PixelCard';
 import { PixelButton } from '@/components/ui/PixelButton';
 import { BackButton } from '@/components/ui/BackButton';
+import { FeishuIntegrationCard } from '@/components/integration/FeishuIntegrationCard';
 
 export default function MyArchitecturesPage() {
-  const { architectures, lobsters } = useStore();
+  const { architectures, lobsters, fetchArchitectures, fetchAgents } = useStore();
+
+  useEffect(() => {
+    void fetchArchitectures();
+    void fetchAgents();
+  }, [fetchAgents, fetchArchitectures]);
 
   return (
     <div>
@@ -82,6 +89,15 @@ export default function MyArchitecturesPage() {
                 <div className="flex justify-between text-xs font-pixel text-pixel-black/60 mb-4">
                   <span>{arch.agents.length} members</span>
                   <span>{new Date(arch.createdAt).toLocaleDateString('en-US')}</span>
+                </div>
+
+                <div className="mb-4">
+                  <FeishuIntegrationCard
+                    scope="team"
+                    subjectId={arch.id}
+                    subjectName={arch.name}
+                    compact
+                  />
                 </div>
 
                 <Link href={`/architectures/mine/${arch.id}`}>

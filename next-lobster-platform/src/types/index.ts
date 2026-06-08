@@ -68,6 +68,7 @@ export interface Architecture {
   edges?: ArchitectureEdge[];
   workflowDsl?: WorkflowDsl;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface Project {
@@ -79,6 +80,7 @@ export interface Project {
   icon: string;
   workspacePath: string;
   teamIds: string[];
+  agentIds: string[];
   ganttEnabled: boolean;
   ganttPlan: ProjectGanttItem[];
   gitRemote: string;
@@ -105,11 +107,40 @@ export interface ProjectInput {
   notes?: string;
   icon?: string;
   teamIds?: string[];
+  agentIds?: string[];
   ganttEnabled?: boolean;
   ganttPlan?: ProjectGanttItem[];
   gitRemote?: string;
   gitBranch?: string;
   gitCommit?: string;
+}
+
+export interface ProjectFileNode {
+  name: string;
+  path: string;
+  relativePath: string;
+  isDirectory: boolean;
+  size: number;
+  modifiedAt: string;
+  children?: ProjectFileNode[];
+}
+
+export interface ProjectFileTree {
+  projectId: string;
+  root: ProjectFileNode;
+  truncated: boolean;
+  totalEntries: number;
+}
+
+export interface ProjectFileContent {
+  name: string;
+  path: string;
+  relativePath: string;
+  size: number;
+  modifiedAt: string;
+  content: string;
+  truncated: boolean;
+  binary: boolean;
 }
 
 export interface RuntimePlatformHealth {

@@ -3,9 +3,50 @@ import path from 'path';
 import { and, desc, eq } from 'drizzle-orm';
 import { getDb } from '../db/index.js';
 import { projects, type Project } from '../db/schema.js';
-import { getProjectWorkspacePath, writeFile } from './workspace.service.js';
+import { getProjectWorkspacePath, resolveStoredPath, writeFile } from './workspace.service.js';
 
 const DEFAULT_PROJECT_ICON = '/project-icons/folder-blue.svg';
+const PROJECT_TREE_MAX_DEPTH = 5;
+const PROJECT_TREE_MAX_ENTRIES = 600;
+const PROJECT_FILE_PREVIEW_MAX_BYTES = 512 * 1024;
+const PROJECT_FILE_IGNORED_DIRS = new Set([
+  '.git',
+  '.hg',
+  '.svn',
+  '.next',
+  '.openclaw',
+  'build',
+  'dist',
+  'node_modules',
+]);
+
+export interface ProjectFileNode {
+  name: string;
+  path: string;
+  relativePath: string;
+  isDirectory: boolean;
+  size: number;
+  modifiedAt: string;
+  children?: ProjectFileNode[];
+}
+
+export interface ProjectFileTree {
+  projectId: string;
+  root: ProjectFileNode;
+  truncated: boolean;
+  totalEntries: number;
+}
+
+export interface ProjectFileContent {
+  name: string;
+  path: string;
+  relativePath: string;
+  size: number;
+  modifiedAt: string;
+  content: string;
+  truncated: boolean;
+  binary: boolean;
+}
 
 function generateId(): string {
   const bytes = new Uint8Array(16);
@@ -42,6 +83,7 @@ function safeProject(project: Project) {
     icon: project.icon,
     workspacePath: project.workspacePath,
     teamIds: parseJsonArray(project.teamIds),
+    agentIds: parseJsonArray(project.agentIds),
     ganttEnabled: Boolean(project.ganttEnabled),
     ganttPlan: parseJsonArray(project.ganttPlan),
     gitRemote: project.gitRemote,
@@ -110,6 +152,7 @@ export interface CreateProjectInput {
   notes?: unknown;
   icon?: unknown;
   teamIds?: unknown;
+  agentIds?: unknown;
   ganttEnabled?: unknown;
   ganttPlan?: unknown;
   gitRemote?: unknown;
@@ -158,6 +201,7 @@ export async function createProject(userId: string, input: CreateProjectInput) {
     icon: normalizeIcon(input.icon),
     workspacePath,
     teamIds: JSON.stringify(parseStringArray(input.teamIds)),
+    agentIds: JSON.stringify(parseStringArray(input.agentIds)),
     ganttEnabled: input.ganttEnabled === true,
     ganttPlan: normalizeJsonArray(input.ganttPlan),
     gitRemote: normalizeText(input.gitRemote),
@@ -192,6 +236,7 @@ export async function updateProject(userId: string, projectId: string, input: Pa
   if (input.notes !== undefined) updateData.notes = normalizeText(input.notes);
   if (input.icon !== undefined) updateData.icon = normalizeIcon(input.icon);
   if (input.teamIds !== undefined) updateData.teamIds = JSON.stringify(parseStringArray(input.teamIds));
+  if (input.agentIds !== undefined) updateData.agentIds = JSON.stringify(parseStringArray(input.agentIds));
   if (input.ganttEnabled !== undefined) updateData.ganttEnabled = input.ganttEnabled === true;
   if (input.ganttPlan !== undefined) updateData.ganttPlan = normalizeJsonArray(input.ganttPlan);
   if (input.gitRemote !== undefined) updateData.gitRemote = normalizeText(input.gitRemote);
@@ -240,4 +285,172 @@ export function ensureProjectWorkspace(workspacePath: string): void {
   if (!fs.existsSync(workspacePath)) {
     fs.mkdirSync(workspacePath, { recursive: true });
   }
+}
+
+function normalizeRequestedRelativePath(value: unknown): string {
+  const raw = typeof value === 'string' ? value.trim() : '';
+  if (!raw) return '';
+  if (path.isAbsolute(raw) || /^[A-Za-z]:[\\/]/.test(raw)) {
+    throw new Error('只能访问当前项目工作区内的相对路径');
+  }
+
+  const normalized = raw.replace(/\\/g, '/').replace(/^\/+/, '');
+  const parts = normalized.split('/').filter((part) => part && part !== '.');
+  if (parts.some((part) => part === '..')) {
+    throw new Error('路径不能跳出当前项目工作区');
+  }
+  return parts.join('/');
+}
+
+function resolveProjectChildPath(workspacePath: string, relativePath: string): { rootPath: string; targetPath: string } {
+  const rootPath = path.resolve(resolveStoredProjectPath(workspacePath));
+  const targetPath = path.resolve(rootPath, relativePath);
+  if (targetPath !== rootPath && !targetPath.startsWith(`${rootPath}${path.sep}`)) {
+    throw new Error('路径不能跳出当前项目工作区');
+  }
+  return { rootPath, targetPath };
+}
+
+function resolveStoredProjectPath(workspacePath: string): string {
+  return resolveStoredPath(workspacePath);
+}
+
+function shouldHideProjectTreeEntry(name: string, relativePath: string, isDirectory: boolean): boolean {
+  if (isDirectory && PROJECT_FILE_IGNORED_DIRS.has(name)) return true;
+  if (relativePath === '.openclaw-project.json') return true;
+  return false;
+}
+
+function fileNodeFromStat(name: string, relativePath: string, stats: fs.Stats, children?: ProjectFileNode[]): ProjectFileNode {
+  return {
+    name,
+    path: relativePath,
+    relativePath,
+    isDirectory: stats.isDirectory(),
+    size: stats.isDirectory() ? 0 : stats.size,
+    modifiedAt: stats.mtime.toISOString(),
+    ...(children ? { children } : {}),
+  };
+}
+
+export async function listProjectFiles(userId: string, projectId: string, requestedPath?: unknown): Promise<ProjectFileTree | null> {
+  const project = await getProject(userId, projectId);
+  if (!project) return null;
+
+  const relativePath = normalizeRequestedRelativePath(requestedPath);
+  const { rootPath, targetPath } = resolveProjectChildPath(project.workspacePath, relativePath);
+  ensureProjectWorkspace(rootPath);
+
+  if (!fs.existsSync(targetPath)) {
+    throw new Error('项目文件夹不存在');
+  }
+
+  const rootStats = fs.statSync(targetPath);
+  if (!rootStats.isDirectory()) {
+    throw new Error('请选择项目文件夹路径');
+  }
+
+  let totalEntries = 0;
+  let truncated = false;
+
+  const walk = (dirPath: string, depth: number): ProjectFileNode[] => {
+    if (depth > PROJECT_TREE_MAX_DEPTH || totalEntries >= PROJECT_TREE_MAX_ENTRIES) {
+      truncated = true;
+      return [];
+    }
+
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true })
+      .filter((entry) => {
+        const fullPath = path.join(dirPath, entry.name);
+        const entryRelativePath = normalizeRelativeProjectPath(path.relative(rootPath, fullPath));
+        return !shouldHideProjectTreeEntry(entry.name, entryRelativePath, entry.isDirectory());
+      })
+      .sort((a, b) => {
+        if (a.isDirectory() !== b.isDirectory()) return a.isDirectory() ? -1 : 1;
+        return a.name.localeCompare(b.name, 'zh-CN', { sensitivity: 'base' });
+      });
+
+    const nodes: ProjectFileNode[] = [];
+    for (const entry of entries) {
+      if (totalEntries >= PROJECT_TREE_MAX_ENTRIES) {
+        truncated = true;
+        break;
+      }
+
+      const fullPath = path.join(dirPath, entry.name);
+      const stats = fs.statSync(fullPath);
+      if (!stats.isDirectory() && !stats.isFile()) continue;
+
+      totalEntries += 1;
+      const entryRelativePath = normalizeRelativeProjectPath(path.relative(rootPath, fullPath));
+      const children = entry.isDirectory() ? walk(fullPath, depth + 1) : undefined;
+      nodes.push(fileNodeFromStat(entry.name, entryRelativePath, stats, children));
+    }
+
+    return nodes;
+  };
+
+  const rootRelativePath = normalizeRelativeProjectPath(path.relative(rootPath, targetPath));
+  return {
+    projectId,
+    root: fileNodeFromStat(
+      rootRelativePath ? path.basename(targetPath) : 'workspace',
+      rootRelativePath,
+      rootStats,
+      walk(targetPath, 0)
+    ),
+    truncated,
+    totalEntries,
+  };
+}
+
+export async function readProjectFileContent(
+  userId: string,
+  projectId: string,
+  requestedPath?: unknown
+): Promise<ProjectFileContent | null> {
+  const project = await getProject(userId, projectId);
+  if (!project) return null;
+
+  const relativePath = normalizeRequestedRelativePath(requestedPath);
+  if (!relativePath) {
+    throw new Error('请选择要预览的文件');
+  }
+
+  const { targetPath } = resolveProjectChildPath(project.workspacePath, relativePath);
+  if (!fs.existsSync(targetPath)) {
+    throw new Error('文件不存在');
+  }
+
+  const stats = fs.statSync(targetPath);
+  if (!stats.isFile()) {
+    throw new Error('只能预览文件，不能预览文件夹');
+  }
+
+  const bytesToRead = Math.min(stats.size, PROJECT_FILE_PREVIEW_MAX_BYTES);
+  const buffer = Buffer.alloc(bytesToRead);
+  if (bytesToRead > 0) {
+    const fd = fs.openSync(targetPath, 'r');
+    try {
+      fs.readSync(fd, buffer, 0, bytesToRead, 0);
+    } finally {
+      fs.closeSync(fd);
+    }
+  }
+
+  const binary = buffer.includes(0);
+  return {
+    name: path.basename(targetPath),
+    path: relativePath,
+    relativePath,
+    size: stats.size,
+    modifiedAt: stats.mtime.toISOString(),
+    content: binary ? '' : buffer.toString('utf-8').replace(/^\uFEFF/, ''),
+    truncated: stats.size > PROJECT_FILE_PREVIEW_MAX_BYTES,
+    binary,
+  };
+}
+
+function normalizeRelativeProjectPath(value: string): string {
+  return value.replace(/\\/g, '/').replace(/^\/+/, '');
 }

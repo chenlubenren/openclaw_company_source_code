@@ -10,7 +10,7 @@ import { PixelHero } from '@/components/effects/PixelHero';
 import { MobileNavIcon, isMobileTabKey, mobileTabs, useMobileDisplayMode, type MobileDisplayMode, type MobileTabKey } from '@/components/layout/MobileAppNav';
 import { useStore } from '@/store/useStore';
 import { useAuthStore } from '@/store/useAuthStore';
-import { Lobster, Project } from '@/types';
+import { Lobster, Project, Session, SessionMessage } from '@/types';
 import { hasConfiguredProvider } from '@/lib/agentProvider';
 import { useSearchParams } from 'next/navigation';
 
@@ -22,6 +22,14 @@ function FolderIcon({ src, className = 'h-12 w-12' }: { src?: string; className?
       className={`${className} object-contain`}
       style={{ imageRendering: 'pixelated' }}
     />
+  );
+}
+
+function FolderSilhouetteIcon({ className = 'h-8 w-8' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 64 64" className={className} aria-hidden="true" shapeRendering="crispEdges">
+      <path fill="currentColor" d="M6 14h20l6 8h26v28H6z" />
+    </svg>
   );
 }
 
@@ -151,6 +159,120 @@ function MobileAgentRow({ agent, displayMode }: { agent: Lobster; displayMode: M
   );
 }
 
+function formatMobileChatTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+}
+
+function MobileTeaPartyAvatar({
+  members,
+  displayMode,
+}: {
+  members: Lobster[];
+  displayMode: MobileDisplayMode;
+}) {
+  const careMode = displayMode === 'care';
+  const visibleMembers = members.slice(0, 4);
+  const sizeClass = careMode ? 'h-[78px] w-[78px] border-4' : 'h-12 w-12 border-3';
+
+  if (visibleMembers.length === 0) {
+    return (
+      <div className={`flex shrink-0 items-center justify-center border-pixel-black bg-pixel-yellow text-pixel-black ${sizeClass}`}>
+        <MobileNavIcon tab="teams" compact={!careMode} />
+      </div>
+    );
+  }
+
+  return (
+    <div className={`grid shrink-0 grid-cols-2 gap-0.5 overflow-hidden border-pixel-black bg-pixel-white p-0.5 ${sizeClass}`}>
+      {visibleMembers.map((member) => (
+        <div key={member.id} className="min-h-0 min-w-0 overflow-hidden bg-pixel-black/5">
+          <img
+            src={member.avatar || '/lobsters/lobster-004.png'}
+            alt={member.name}
+            className="h-full w-full object-contain"
+            style={{ imageRendering: 'pixelated' }}
+          />
+        </div>
+      ))}
+      {Array.from({ length: Math.max(0, 4 - visibleMembers.length) }).map((_, index) => (
+        <div key={`empty-${index}`} className="bg-pixel-black/5" />
+      ))}
+    </div>
+  );
+}
+
+function MobileTeaPartyList({
+  sessions,
+  sessionMessages,
+  lobsters,
+  displayMode,
+}: {
+  sessions: Session[];
+  sessionMessages: SessionMessage[];
+  lobsters: Lobster[];
+  displayMode: MobileDisplayMode;
+}) {
+  const careMode = displayMode === 'care';
+  const sortedSessions = [...sessions].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  const messagesBySession = sessionMessages.reduce<Record<string, SessionMessage[]>>((groups, message) => {
+    groups[message.sessionId] = [...(groups[message.sessionId] || []), message];
+    return groups;
+  }, {});
+
+  return (
+    <div className="bg-pixel-white">
+      {sortedSessions.length > 0 ? (
+        sortedSessions.map((session) => {
+          const members = lobsters.filter((lobster) => session.memberIds.includes(lobster.id));
+          const lastMessage = (messagesBySession[session.id] || []).slice(-1)[0];
+          const preview = lastMessage
+            ? `${lastMessage.senderName}: ${lastMessage.content}`
+            : members.length > 0
+              ? `${members.length} 位 Agent 已在群聊中`
+              : '还没有成员，进入后邀请 Agent';
+
+          return (
+            <Link
+              key={session.id}
+              href={`/agent-tea-party?sessionId=${encodeURIComponent(session.id)}`}
+              className={`flex items-center border-b-2 border-pixel-black/10 bg-pixel-white last:border-b-0 active:bg-pixel-yellow/40 ${careMode ? 'min-h-[116px] gap-3 px-4 py-4' : 'min-h-[72px] gap-2 px-3 py-2.5'}`}
+            >
+              <MobileTeaPartyAvatar members={members} displayMode={displayMode} />
+              <div className="min-w-0 flex-1">
+                <p className={`truncate font-pixel font-bold leading-tight text-pixel-black ${careMode ? 'text-[1.85rem]' : 'text-base'}`}>{session.name}</p>
+                <p className={`truncate font-pixel leading-tight text-pixel-black/60 ${careMode ? 'mt-2.5 text-[1.35rem]' : 'mt-1 text-xs'}`}>
+                  {preview}
+                </p>
+              </div>
+              <div className="shrink-0 text-right">
+                <p className={`font-pixel leading-none text-pixel-black/45 ${careMode ? 'text-[1.1rem]' : 'text-[10px]'}`}>{formatMobileChatTime(session.updatedAt)}</p>
+                <p className={`mt-2 border-2 border-pixel-black bg-pixel-yellow px-1.5 py-0.5 font-pixel leading-none text-pixel-black ${careMode ? 'text-base' : 'text-[10px]'}`}>
+                  {session.memberIds.length}
+                </p>
+              </div>
+            </Link>
+          );
+        })
+      ) : (
+        <Link
+          href="/agent-tea-party"
+          className={`flex items-center border-b-2 border-pixel-black/10 bg-pixel-white active:bg-pixel-yellow/40 ${careMode ? 'min-h-[116px] gap-3 px-4 py-4' : 'min-h-[72px] gap-2 px-3 py-2.5'}`}
+        >
+          <MobileTeaPartyAvatar members={[]} displayMode={displayMode} />
+          <div className="min-w-0 flex-1">
+            <p className={`font-pixel font-bold leading-tight text-pixel-black ${careMode ? 'text-[1.85rem]' : 'text-base'}`}>还没有群聊</p>
+            <p className={`truncate font-pixel leading-tight text-pixel-black/60 ${careMode ? 'mt-2.5 text-[1.35rem]' : 'mt-1 text-xs'}`}>
+              进入茶话会后创建第一个 Agent 群聊
+            </p>
+          </div>
+        </Link>
+      )}
+    </div>
+  );
+}
+
 function MobileDisplayModeSwitch({
   displayMode,
   onChange,
@@ -202,11 +324,15 @@ function MobileDisplayModeSwitch({
 function MobileHome({
   lobsters,
   projects,
+  sessions,
+  sessionMessages,
   teamCount,
   isLoggedIn,
 }: {
   lobsters: Lobster[];
   projects: Project[];
+  sessions: Session[];
+  sessionMessages: SessionMessage[];
   teamCount: number;
   isLoggedIn: boolean;
 }) {
@@ -221,7 +347,7 @@ function MobileHome({
   const configuredAgentCount = lobsters.filter(hasConfiguredProvider).length;
   const activeSummary =
     activeTab === 'projects'
-      ? `${projects.length} 个项目 · 茶话会入口`
+      ? `${projects.length} 个项目`
       : activeTab === 'contacts'
         ? `${configuredAgentCount}/${lobsters.length} 已配置供应商`
         : activeTab === 'teams'
@@ -234,21 +360,21 @@ function MobileHome({
 
   return (
     <div className="md:hidden -mx-4 bg-pixel-white px-4">
-      <div className={careMode ? 'min-h-[calc(100vh-128px)] pb-48' : 'min-h-[calc(100vh-86px)] pb-28'}>
-        <div className={`sticky top-0 z-20 -mx-4 border-b-4 border-pixel-black bg-pixel-white px-4 ${careMode ? 'py-3.5' : 'py-2.5'}`}>
+      <div className={careMode ? 'min-h-[calc(100vh-112px)] pb-36' : 'min-h-[calc(100vh-70px)] pb-24'}>
+        <div className={`sticky top-0 z-20 -mx-4 border-b-4 border-pixel-black bg-pixel-white px-4 ${careMode ? 'py-2' : 'py-1.5'}`}>
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className={`font-pixel leading-none text-pixel-black/55 ${careMode ? 'text-[1.35rem]' : 'text-xs'}`}>OPENCLAW</p>
-              <h1 className={`mt-1 truncate font-pixel font-bold leading-none text-pixel-black ${careMode ? 'text-[3rem]' : 'text-[1.7rem]'}`}>
+              <p className={`hidden font-pixel leading-none text-pixel-black/55 ${careMode ? 'text-[1.35rem]' : 'text-xs'}`}>OPENCLAW</p>
+              <h1 className={`truncate font-pixel font-bold leading-none text-pixel-black ${careMode ? 'text-[2rem]' : 'text-[1.25rem]'}`}>
                 {activeTabMeta.label}
               </h1>
-              <p className={`truncate font-pixel leading-tight text-pixel-black/55 ${careMode ? 'mt-1.5 text-[1.35rem]' : 'mt-1 text-xs'}`}>{activeSummary}</p>
+              <p className={`truncate font-pixel leading-tight text-pixel-black/55 ${careMode ? 'mt-1 text-[1.1rem]' : 'mt-0.5 text-[11px]'}`}>{activeSummary}</p>
             </div>
-            <div className={`flex shrink-0 items-center justify-center border-pixel-black ${careMode ? 'h-[74px] w-[74px] border-4' : 'h-12 w-12 border-3'} ${activeTabMeta.accent} text-pixel-white`} style={{ boxShadow: careMode ? '4px 4px 0 #101010' : '2px 2px 0 #101010' }}>
+            <div className={`flex shrink-0 items-center justify-center border-pixel-black ${careMode ? 'h-14 w-14 border-4' : 'h-10 w-10 border-2'} ${activeTabMeta.accent} text-pixel-white`} style={{ boxShadow: careMode ? '4px 4px 0 #101010' : '2px 2px 0 #101010' }}>
               <MobileNavIcon tab={activeTab} compact={!careMode} />
             </div>
           </div>
-          <div className={`grid grid-cols-3 gap-2 ${careMode ? 'mt-3' : 'mt-2'}`}>
+          <div className={`hidden grid-cols-3 gap-2 ${careMode ? 'mt-3' : 'mt-2'}`}>
             <div className={`border-2 border-pixel-black bg-pixel-blue px-2 text-center text-pixel-white ${careMode ? 'py-2' : 'py-1.5'}`}>
               <p className={`font-pixel leading-none ${careMode ? 'text-base' : 'text-xs'}`}>项目</p>
               <p className={`mt-1 font-pixel leading-none ${careMode ? 'text-[1.7rem]' : 'text-base'}`}>{projects.length}</p>
@@ -264,46 +390,29 @@ function MobileHome({
           </div>
         </div>
 
-        <main className={careMode ? 'mt-4 space-y-5' : 'mt-3 space-y-3'}>
+        <main className={careMode ? 'mt-3 space-y-4' : 'mt-2 space-y-2.5'}>
           {activeTab === 'projects' && (
-            <>
-              <MobilePanel>
-                <div className={`flex items-center justify-between border-b-4 border-pixel-black bg-pixel-blue text-pixel-white ${careMode ? 'px-4 py-3' : 'px-3 py-2'}`}>
-                  <div>
-                    <p className={`font-pixel font-bold leading-tight ${careMode ? 'text-[1.8rem]' : 'text-base'}`}>最近项目</p>
-                    <p className={`mt-1 font-pixel leading-tight text-pixel-white/80 ${careMode ? 'text-lg' : 'text-xs'}`}>团队共享的服务器工作空间</p>
-                  </div>
-                  <Link href="/projects" className={`border-2 border-pixel-black bg-pixel-white font-pixel leading-none text-pixel-black ${careMode ? 'px-3 py-1.5 text-xl' : 'px-2 py-1 text-xs'}`}>管理</Link>
+            <MobilePanel>
+              <div className={`flex items-center justify-between border-b-4 border-pixel-black bg-pixel-blue text-pixel-white ${careMode ? 'px-4 py-3' : 'px-3 py-2'}`}>
+                <div>
+                  <p className={`font-pixel font-bold leading-tight ${careMode ? 'text-[1.8rem]' : 'text-base'}`}>最近项目</p>
+                  <p className={`mt-1 font-pixel leading-tight text-pixel-white/80 ${careMode ? 'text-lg' : 'text-xs'}`}>团队共享的服务器工作空间</p>
                 </div>
-                {recentProjects.length > 0 ? (
-                  recentProjects.map((project) => <MobileProjectRow key={project.id} project={project} displayMode={displayMode} />)
-                ) : (
-                  <MobileLinkRow
-                    href="/projects"
-                    title="新建第一个项目"
-                    description="为服务器上的个人工作空间命名并绑定团队"
-                    icon={<FolderIcon className={careMode ? 'h-12 w-12' : 'h-8 w-8'} />}
-                    accent="bg-pixel-blue"
-                    displayMode={displayMode}
-                  />
-                )}
-              </MobilePanel>
-              <MobilePanel>
+                <Link href="/projects" className={`border-2 border-pixel-black bg-pixel-white font-pixel leading-none text-pixel-black ${careMode ? 'px-3 py-1.5 text-xl' : 'px-2 py-1 text-xs'}`}>管理</Link>
+              </div>
+              {recentProjects.length > 0 ? (
+                recentProjects.map((project) => <MobileProjectRow key={project.id} project={project} displayMode={displayMode} />)
+              ) : (
                 <MobileLinkRow
-                  href="/agent-tea-party"
-                  title="Agent 茶话会"
-                  description="像群聊一样组织多 Agent 讨论"
-                  badge="群聊"
-                  accent="bg-pixel-red"
+                  href="/projects"
+                  title="新建第一个项目"
+                  description="为服务器上的个人工作空间命名并绑定团队"
+                  icon={<FolderIcon className={careMode ? 'h-12 w-12' : 'h-8 w-8'} />}
+                  accent="bg-pixel-blue"
                   displayMode={displayMode}
-                  icon={
-                    <svg viewBox="0 0 24 24" className={`${careMode ? 'h-10 w-10' : 'h-7 w-7'} text-pixel-red`} aria-hidden="true">
-                      <path fill="currentColor" d="M20 3H4v11h3v4l5-4h8V3Zm-2 9h-6.7L9 13.8V12H6V5h12v7Z" />
-                    </svg>
-                  }
                 />
-              </MobilePanel>
-            </>
+              )}
+            </MobilePanel>
           )}
 
           {activeTab === 'contacts' && (
@@ -338,7 +447,16 @@ function MobileHome({
                 displayMode={displayMode}
               />
               <MobileLinkRow href="/architectures/mine" title="我的团队" description={`已创建 ${teamCount} 个团队`} accent="bg-pixel-green" icon={<MobileNavIcon tab="teams" compact={!careMode} />} displayMode={displayMode} />
-              <MobileLinkRow href="/agent-tea-party" title="Agent 茶话会" description="发起一个群聊式讨论" accent="bg-pixel-red" icon={<MobileNavIcon tab="projects" compact={!careMode} />} displayMode={displayMode} />
+            </MobilePanel>
+          )}
+
+          {activeTab === 'teams' && (
+            <MobilePanel>
+              <div className={`border-b-4 border-pixel-black bg-pixel-yellow text-pixel-black ${careMode ? 'px-4 py-3' : 'px-3 py-2'}`}>
+                <p className={`font-pixel font-bold leading-tight ${careMode ? 'text-[1.8rem]' : 'text-base'}`}>Agent 茶话会</p>
+                <p className={`mt-1 font-pixel leading-tight text-pixel-black/65 ${careMode ? 'text-lg' : 'text-xs'}`}>像微信群聊一样进入已创建的 Agent 群</p>
+              </div>
+              <MobileTeaPartyList sessions={sessions} sessionMessages={sessionMessages} lobsters={lobsters} displayMode={displayMode} />
             </MobilePanel>
           )}
 
@@ -424,7 +542,7 @@ export default function HomePage() {
 }
 
 function HomePageInner() {
-  const { lobsters, architectures, projects, initialize, deleteAgentAPI } = useStore();
+  const { lobsters, architectures, projects, sessions, sessionMessages, initialize, deleteAgentAPI } = useStore();
   const { token, user } = useAuthStore();
   const isLoggedIn = !!token;
   const [showHero, setShowHero] = useState(false);
@@ -469,6 +587,8 @@ function HomePageInner() {
       <MobileHome
         lobsters={lobsters}
         projects={projects}
+        sessions={sessions}
+        sessionMessages={sessionMessages}
         teamCount={(architectures ?? []).length}
         isLoggedIn={isLoggedIn}
       />
@@ -600,9 +720,9 @@ function HomePageInner() {
                 href="/projects"
                 title="我的项目"
                 description={`Projects | ${isLoggedIn ? `管理 ${projects.length} 个工作空间` : '登录后查看'}`}
-                color="bg-pixel-gray"
+                color="bg-pixel-yellow"
                 delay={0.3}
-                icon={<FolderIcon className="h-8 w-8" />}
+                icon={<FolderSilhouetteIcon className="h-8 w-8 text-pixel-yellow" />}
               />
               <MenuCard
                 href="/agent-tea-party"

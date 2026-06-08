@@ -46,6 +46,13 @@ interface MenuCardProps {
 }
 
 export function MenuCard({ href, icon, title, description, color, delay = 0 }: MenuCardProps) {
+  const yellowCard = color.includes('bg-pixel-yellow');
+  const titleClassName = yellowCard
+    ? 'text-pixel-black group-hover:text-pixel-blue'
+    : 'text-pixel-white group-hover:text-pixel-yellow';
+  const descriptionClassName = yellowCard ? 'text-pixel-black/70' : 'text-pixel-white/80';
+  const arrowClassName = yellowCard ? 'text-pixel-black' : 'text-pixel-white';
+
   return (
     <Link href={href}>
       <motion.div
@@ -67,15 +74,15 @@ export function MenuCard({ href, icon, title, description, color, delay = 0 }: M
           {icon}
         </div>
         <div>
-          <h3 className="font-pixel text-base text-pixel-white group-hover:text-pixel-yellow transition-colors">
+          <h3 className={`font-pixel text-base transition-colors ${titleClassName}`}>
             {title}
           </h3>
-          <p className="font-pixel text-xs text-pixel-white/80">
+          <p className={`font-pixel text-xs ${descriptionClassName}`}>
             {description}
           </p>
         </div>
         <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
-          <svg viewBox="0 0 24 24" className="w-6 h-6 text-pixel-white">
+          <svg viewBox="0 0 24 24" className={`w-6 h-6 ${arrowClassName}`}>
             <path fill="currentColor" d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
           </svg>
         </div>

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PixelButton } from '@/components/ui/PixelButton';
+import { FeishuIntegrationCard } from '@/components/integration/FeishuIntegrationCard';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Lobster } from '@/types';
 
@@ -319,6 +320,12 @@ export function AgentConfigModal({ agent, onClose, onSave }: AgentConfigModalPro
                 </div>
               )}
             </div>
+
+            <FeishuIntegrationCard
+              scope="agent"
+              subjectId={agent.id}
+              subjectName={config.name || agent.name}
+            />
 
             {error && (
               <div className="bg-pixel-red/20 border-4 border-pixel-red px-4 py-2 font-pixel text-sm text-pixel-red">

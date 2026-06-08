@@ -2,11 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStore } from '@/store/useStore';
 import type {
   Architecture,
   ArchitectureAgent,
+  ArchitectureEdge,
+  ArchitectureNode,
   Project,
   WorkflowArtifact,
   WorkflowDsl,
@@ -16,44 +20,86 @@ import type {
 } from '@/types';
 import { PixelButton } from '@/components/ui/PixelButton';
 import { PixelInput } from '@/components/ui/PixelInput';
-import { NodeFlowPreview } from '@/components/architecture/NodeFlowPreview';
 import { ArchitectureInfo } from '@/components/architecture/ArchitectureInfo';
 import { BackButton } from '@/components/ui/BackButton';
 import { MessageRenderer } from '@/components/chat/MessageRenderer';
-import { buildWorkflowDslFromCanvas } from '@/lib/workflowDsl';
+import { FeishuIntegrationCard } from '@/components/integration/FeishuIntegrationCard';
+import { ProjectInfoMenu } from '@/components/projects/ProjectInfoMenu';
+import { buildCanvasGraphFromWorkflowDsl, buildWorkflowDslFromCanvas } from '@/lib/workflowDsl';
 import { fetchWorkflowExecution, startWorkflowExecution } from '@/lib/api';
+import type { ArchTemplate } from '@/lib/archTemplates';
+import type { Edge, Node } from '@xyflow/react';
 
 type ChatRole = 'user' | 'system' | 'lobster' | 'error';
 type ChatMessage = { role: ChatRole; content: string; agentName?: string };
 
 const TERMINAL_EXECUTION_STATUSES: WorkflowExecutionStatus[] = ['succeeded', 'failed', 'cancelled'];
 
+const NodeCanvas = dynamic(() => import('@/app/architectures/create/NodeCanvas'), { ssr: false });
+
 export default function ArchitectureDetailPage() {
   const params = useParams();
   const router = useRouter();
   const archId = params.id as string;
-  const { architectures, projects, fetchProjects, updateAgentStatus, setActiveAgent, setCurrentTask } = useStore();
+  const {
+    architectures,
+    lobsters,
+    projects,
+    fetchArchitectures,
+    fetchAgents,
+    fetchProjects,
+    updateArchitectureAPI,
+    updateAgentStatus,
+    setActiveAgent,
+    setCurrentTask,
+  } = useStore();
 
   const architecture = architectures.find((item: Architecture) => item.id === archId);
   const runnableDsl = useMemo(() => {
     if (!architecture) return null;
     return resolveArchitectureDsl(architecture);
   }, [architecture]);
+  const editableTemplate = useMemo<ArchTemplate | null>(() => {
+    if (!architecture) return null;
+    const graph = architecture.nodes?.length
+      ? { nodes: architecture.nodes, edges: architecture.edges ?? [] }
+      : architecture.workflowDsl
+        ? buildCanvasGraphFromWorkflowDsl(architecture.workflowDsl, lobsters)
+        : { nodes: [], edges: [] };
+
+    return {
+      id: architecture.id,
+      pattern: 'custom',
+      name: architecture.name,
+      nameCn: architecture.name,
+      description: architecture.description,
+      descriptionCn: architecture.description,
+      agents: architecture.agents.map(({ status, ...agent }) => agent),
+      nodes: graph.nodes,
+      edges: graph.edges,
+    };
+  }, [architecture, lobsters]);
   const projectOptions = useMemo(() => {
-    if (!architecture) return projects;
-    const boundProjects = projects.filter((project) => project.teamIds.includes(architecture.id));
-    const otherProjects = projects.filter((project) => !project.teamIds.includes(architecture.id));
-    return [...boundProjects, ...otherProjects];
+    if (!architecture) return [];
+    return projects.filter((project) => project.teamIds.includes(architecture.id));
   }, [architecture, projects]);
 
   const [inputValue, setInputValue] = useState('');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [hasLoadedArchitectures, setHasLoadedArchitectures] = useState(false);
   const [graphCollapsed, setGraphCollapsed] = useState(false);
   const [progressCollapsed, setProgressCollapsed] = useState(false);
+  const [isTestDialogOpen, setIsTestDialogOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [execution, setExecution] = useState<WorkflowExecution | null>(null);
+  const [canvasAgents, setCanvasAgents] = useState<ArchitectureAgent[]>([]);
+  const [canvasNodes, setCanvasNodes] = useState<Node[]>([]);
+  const [canvasEdges, setCanvasEdges] = useState<Edge[]>([]);
+  const [isSavingCanvas, setIsSavingCanvas] = useState(false);
+  const [canvasSaveStatus, setCanvasSaveStatus] = useState('');
+  const [canvasSaveError, setCanvasSaveError] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const archRef = useRef(architecture);
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -65,8 +111,20 @@ export default function ArchitectureDetailPage() {
   }, [architecture]);
 
   useEffect(() => {
+    let active = true;
+    setHasLoadedArchitectures(false);
+    void fetchArchitectures().finally(() => {
+      if (active) setHasLoadedArchitectures(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, [fetchArchitectures]);
+
+  useEffect(() => {
     void fetchProjects();
-  }, [fetchProjects]);
+    void fetchAgents();
+  }, [fetchAgents, fetchProjects]);
 
   useEffect(() => {
     if (projectOptions.length === 0) {
@@ -251,7 +309,65 @@ export default function ArchitectureDetailPage() {
     }
   };
 
+  const handleAgentsFromCanvas = useCallback((agents: ArchitectureAgent[]) => {
+    setCanvasAgents(agents);
+    setCanvasSaveStatus('');
+    setCanvasSaveError('');
+  }, []);
+
+  const handleCanvasGraphChange = useCallback((nodes: Node[], edges: Edge[]) => {
+    setCanvasNodes(nodes);
+    setCanvasEdges(edges);
+    setCanvasSaveStatus('');
+    setCanvasSaveError('');
+  }, []);
+
+  const handleSaveCanvas = useCallback(async () => {
+    if (!architecture || canvasNodes.length === 0) return;
+
+    const build = buildWorkflowDslFromCanvas({
+      name: architecture.name,
+      description: architecture.description,
+      nodes: canvasNodes,
+      edges: canvasEdges,
+      source: 'canvas',
+    });
+
+    if (build.errors.length > 0) {
+      setCanvasSaveStatus('');
+      setCanvasSaveError(build.errors[0].message);
+      return;
+    }
+
+    setIsSavingCanvas(true);
+    setCanvasSaveStatus('');
+    setCanvasSaveError('');
+
+    try {
+      await updateArchitectureAPI(architecture.id, {
+        ...architecture,
+        agents: canvasAgents.map((agent) => ({ ...agent, status: 'standby' as const })),
+        nodes: toArchitectureNodes(canvasNodes),
+        edges: toArchitectureEdges(canvasEdges),
+        workflowDsl: build.dsl,
+      });
+      setCanvasSaveStatus('架构已保存');
+    } catch (error) {
+      setCanvasSaveError(error instanceof Error ? error.message : '保存团队架构失败');
+    } finally {
+      setIsSavingCanvas(false);
+    }
+  }, [architecture, canvasAgents, canvasEdges, canvasNodes, updateArchitectureAPI]);
+
   if (!architecture) {
+    if (!hasLoadedArchitectures) {
+      return (
+        <div className="text-center py-16">
+          <h2 className="chinese-large text-pixel-black text-2xl">正在加载团队...</h2>
+        </div>
+      );
+    }
+
     return (
       <div className="text-center py-16">
         <h2 className="chinese-large text-pixel-black text-2xl">团队未找到</h2>
@@ -269,7 +385,15 @@ export default function ArchitectureDetailPage() {
         animate={{ opacity: 1, y: 0 }}
         className="flex items-center gap-4 mb-6 mt-6"
       >
-        <BackButton onClick={() => router.push('/')} />
+        <BackButton
+          onClick={() => {
+            if (typeof window !== 'undefined' && window.history.length > 1) {
+              router.back();
+              return;
+            }
+            router.push('/?mobileTab=teams');
+          }}
+        />
         <h1 className="chinese-large text-2xl text-pixel-black flex-1">
           {architecture.name}
         </h1>
@@ -279,9 +403,15 @@ export default function ArchitectureDetailPage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.1 }}
-        className="mb-6"
+        className="mb-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-stretch"
       >
         <ArchitectureInfo architecture={architecture} />
+        <FeishuIntegrationCard
+          scope="team"
+          subjectId={architecture.id}
+          subjectName={architecture.name}
+          compact
+        />
       </motion.div>
 
       <ProjectRunPanel
@@ -327,7 +457,48 @@ export default function ArchitectureDetailPage() {
               transition={{ duration: 0.3, ease: 'easeInOut' }}
               className="overflow-hidden"
             >
-              <NodeFlowPreview architecture={architecture} execution={execution} />
+              <div className="space-y-3">
+                <div
+                  className="bg-pixel-white border-4 border-pixel-black p-3"
+                  style={{ boxShadow: '6px 6px 0px 0px #101010' }}
+                >
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <div className="font-pixel text-sm text-pixel-black">编辑团队架构</div>
+                      <p className="mt-1 font-pixel text-xs text-pixel-black/60">
+                        修改节点、连线或关联 Agent 后，保存会同步更新 Workflow DSL。
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {canvasSaveStatus && (
+                        <span className="font-pixel text-xs text-pixel-green">{canvasSaveStatus}</span>
+                      )}
+                      {canvasSaveError && (
+                        <span className="font-pixel text-xs text-pixel-red">{canvasSaveError}</span>
+                      )}
+                      <PixelButton
+                        onClick={() => void handleSaveCanvas()}
+                        disabled={isSavingCanvas || canvasNodes.length === 0}
+                        variant="primary"
+                        className="text-sm"
+                      >
+                        {isSavingCanvas ? '保存中...' : '保存架构'}
+                      </PixelButton>
+                    </div>
+                  </div>
+                </div>
+                <div className="h-[560px]">
+                  {editableTemplate && (
+                    <NodeCanvas
+                      key={architecture.id}
+                      initialTemplate={editableTemplate}
+                      initialViewportMode="fit"
+                      onAgentsChange={handleAgentsFromCanvas}
+                      onGraphChange={handleCanvasGraphChange}
+                    />
+                  )}
+                </div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -351,20 +522,64 @@ export default function ArchitectureDetailPage() {
       )}
 
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
-        className="bg-pixel-white border-4 border-pixel-black"
+        className="mb-6 border-4 border-pixel-black bg-pixel-white p-4"
+        style={{ boxShadow: '6px 6px 0px 0px #101010' }}
+      >
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div className="font-pixel text-base text-pixel-black">测试团队</div>
+            <p className="mt-1 font-pixel text-xs text-pixel-black/60">
+              打开测试对话框，输入任务后按当前保存的 Workflow DSL 执行。
+            </p>
+          </div>
+          <PixelButton
+            onClick={() => setIsTestDialogOpen(true)}
+            disabled={isProcessing}
+            variant="primary"
+            className="text-base"
+          >
+            {isProcessing ? '测试中...' : '测试团队'}
+          </PixelButton>
+        </div>
+      </motion.div>
+
+      <AnimatePresence>
+        {isTestDialogOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[120] flex items-center justify-center bg-pixel-black/70 p-4"
+            onClick={() => setIsTestDialogOpen(false)}
+          >
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 20 }}
+        transition={{ delay: 0.3 }}
+        className="w-full max-w-4xl max-h-[90vh] overflow-hidden bg-pixel-white border-4 border-pixel-black"
         style={{ boxShadow: '8px 8px 0px 0px #101010' }}
+        onClick={(event) => event.stopPropagation()}
       >
         <div className="bg-pixel-blue text-pixel-white font-pixel text-xl p-4 border-b-4 border-pixel-black flex items-center gap-2">
           <span className="animate-pulse">{'>'}</span>
-          <span>指令控制台</span>
+          <span>测试团队</span>
+          <div className="ml-auto" />
           {isProcessing && (
-            <span className="ml-auto bg-pixel-yellow text-pixel-black px-3 py-1 text-sm animate-pulse">
+            <span className="bg-pixel-yellow text-pixel-black px-3 py-1 text-sm animate-pulse">
               执行中...
             </span>
           )}
+          <button
+            type="button"
+            onClick={() => setIsTestDialogOpen(false)}
+            className="border-2 border-pixel-black bg-pixel-white px-2 py-0.5 font-pixel text-sm text-pixel-black"
+          >
+            X
+          </button>
         </div>
 
         <div className="p-6 min-h-[350px] max-h-[450px] overflow-y-auto bg-pixel-white">
@@ -431,6 +646,9 @@ export default function ArchitectureDetailPage() {
           </p>
         </div>
       </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -453,38 +671,81 @@ function ProjectRunPanel({
       className="mb-6 border-4 border-pixel-black bg-pixel-white p-4"
       style={{ boxShadow: '6px 6px 0px 0px #101010' }}
     >
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="min-w-0 flex-1">
-          <div className="font-pixel text-sm text-pixel-black">运行项目</div>
+          <div className="font-pixel text-sm text-pixel-black">已接入项目</div>
           <p className="mt-1 truncate font-pixel text-xs text-pixel-black/60">
             {selectedProject
-              ? `共享工作区：${selectedProject.workspacePath}`
-              : '未选择项目时，会使用本次团队运行的临时共享工作区。'}
+              ? `测试将使用：${selectedProject.name}`
+              : '当前团队还没有被任何项目接入，测试时会使用临时共享工作区。'}
           </p>
         </div>
         <div className="flex flex-col gap-2 md:flex-row md:items-center">
-          <select
-            value={selectedProjectId}
-            onChange={(event) => onChange(event.target.value)}
-            disabled={disabled}
-            className="min-h-[40px] min-w-[240px] border-3 border-pixel-black bg-pixel-white px-3 font-pixel text-sm text-pixel-black disabled:opacity-50"
-          >
-            <option value="">临时工作区</option>
-            {projects.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.name}{project.teamIds.length > 0 ? ` · ${project.teamIds.length} 团队` : ''}
-              </option>
-            ))}
-          </select>
-          <a
+          <Link
             href="/projects"
             className="inline-flex min-h-[40px] items-center justify-center border-3 border-pixel-black bg-pixel-yellow px-3 font-pixel text-sm text-pixel-black"
             style={{ boxShadow: '3px 3px 0px 0px #101010' }}
           >
             管理项目
-          </a>
+          </Link>
         </div>
       </div>
+
+      {projects.length > 0 ? (
+        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+          {projects.map((project) => {
+            const selected = selectedProjectId === project.id;
+            return (
+              <div
+                key={project.id}
+                className={`border-3 border-pixel-black p-2 ${selected ? 'bg-pixel-blue/10' : 'bg-pixel-gray/10'}`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-pixel text-sm text-pixel-black">{project.name}</div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    {selected && (
+                      <span className="inline-flex h-7 items-center border-2 border-pixel-black bg-pixel-green px-2 font-pixel text-[10px] leading-none text-pixel-white">
+                        测试使用中
+                      </span>
+                    )}
+                    <ProjectInfoMenu project={project} />
+                  </div>
+                </div>
+                {project.description && (
+                  <p className="mt-2 line-clamp-2 font-pixel text-xs text-pixel-black/60">
+                    {project.description}
+                  </p>
+                )}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Link
+                    href={`/projects/${project.id}`}
+                    className="inline-flex min-h-[34px] items-center justify-center border-3 border-pixel-black bg-pixel-blue px-3 font-pixel text-xs text-pixel-white"
+                    style={{ boxShadow: '3px 3px 0px 0px #101010' }}
+                  >
+                    打开项目
+                  </Link>
+                  {!selected && (
+                    <button
+                      type="button"
+                      onClick={() => onChange(project.id)}
+                      disabled={disabled}
+                      className="min-h-[34px] border-3 border-pixel-black bg-pixel-white px-3 font-pixel text-xs text-pixel-black disabled:opacity-50"
+                    >
+                      用于测试
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="border-3 border-pixel-black bg-pixel-gray/10 p-3 font-pixel text-xs text-pixel-black/60">
+          还没有项目调用当前团队。到项目页为项目接入该团队后，这里会出现对应项目卡片。
+        </div>
+      )}
     </div>
   );
 }
@@ -683,6 +944,29 @@ function ArtifactList({ artifacts }: { artifacts: WorkflowArtifact[] }) {
       ))}
     </div>
   );
+}
+
+function toArchitectureNodes(nodes: Node[]): ArchitectureNode[] {
+  return nodes.map((node) => ({
+    id: node.id,
+    type: node.type ?? 'agentNode',
+    position: node.position,
+    data: node.data as Record<string, unknown>,
+  }));
+}
+
+function toArchitectureEdges(edges: Edge[]): ArchitectureEdge[] {
+  return edges.map((edge) => {
+    const data = edge.data as { label?: string; sourceHandle?: string } | undefined;
+    return {
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      label: typeof edge.label === 'string' ? edge.label : data?.label,
+      sourceHandle: edge.sourceHandle ?? data?.sourceHandle ?? null,
+      targetHandle: edge.targetHandle ?? null,
+    };
+  });
 }
 
 function resolveArchitectureDsl(architecture: Architecture): WorkflowDsl | null {

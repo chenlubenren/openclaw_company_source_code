@@ -4,7 +4,9 @@ import {
   createProject,
   deleteProject,
   getProject,
+  listProjectFiles,
   listProjects,
+  readProjectFileContent,
   touchProject,
   updateProject,
 } from '../services/project.service.js';
@@ -31,6 +33,38 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
     console.error('Create project error:', error);
     res.status(400).json({
       message: error instanceof Error ? error.message : '创建项目失败',
+    });
+  }
+});
+
+router.get('/:id/files', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const tree = await listProjectFiles(req.user!.userId, String(req.params.id), req.query.path);
+    if (!tree) {
+      res.status(404).json({ message: '项目不存在' });
+      return;
+    }
+    res.json({ tree });
+  } catch (error) {
+    console.error('List project files error:', error);
+    res.status(400).json({
+      message: error instanceof Error ? error.message : '读取项目文件失败',
+    });
+  }
+});
+
+router.get('/:id/files/content', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const file = await readProjectFileContent(req.user!.userId, String(req.params.id), req.query.path);
+    if (!file) {
+      res.status(404).json({ message: '项目不存在' });
+      return;
+    }
+    res.json({ file });
+  } catch (error) {
+    console.error('Read project file error:', error);
+    res.status(400).json({
+      message: error instanceof Error ? error.message : '读取文件内容失败',
     });
   }
 });

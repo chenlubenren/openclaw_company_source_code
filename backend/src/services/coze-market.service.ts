@@ -352,10 +352,10 @@ export function getCozeBotIdFromAgent(agent: Pick<UserAgentInstance, 'manifest'>
 
 function buildCozeMessages(input: ExecuteCozeTurnInput): Array<Record<string, string>> {
   const history = (input.history || [])
-    .filter((message) => message.content.trim())
+    .filter((message) => message.role === 'user' && message.content.trim())
     .slice(-18)
     .map((message) => ({
-      role: message.role,
+      role: 'user',
       content: message.content,
       content_type: 'text',
     }));

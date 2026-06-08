@@ -14,6 +14,8 @@ import profileRoutes from './routes/profile.routes.js';
 import providersRoutes from './routes/providers.routes.js';
 import workflowsRoutes from './routes/workflows.routes.js';
 import projectsRoutes from './routes/projects.routes.js';
+import architecturesRoutes from './routes/architectures.routes.js';
+import integrationsRoutes from './routes/integrations.routes.js';
 import { initWorkspaceRoot, resolveStoredPath } from './services/workspace.service.js';
 import { startChatServer } from './services/chat-websocket.service.js';
 import { agentRunner } from './services/agent-runner.service.js';
@@ -22,6 +24,24 @@ import { cleanInvalidMarketAgents, cacheAllMarketAgentIcons } from './services/m
 const app = express();
 const PORT = process.env.PORT || 3002;
 const WS_PORT = process.env.WS_PORT || 3003;
+const DEFAULT_CORS_ORIGINS = [
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://localhost:3010',
+  'http://127.0.0.1:3010',
+];
+
+function getAllowedCorsOrigins(): string[] {
+  const rawOrigins = process.env.CORS_ORIGIN?.trim()
+    ? process.env.CORS_ORIGIN
+    : DEFAULT_CORS_ORIGINS.join(',');
+  return rawOrigins
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+}
+
+const allowedCorsOrigins = getAllowedCorsOrigins();
 
 // Multer for file uploads
 const upload = multer({
@@ -31,7 +51,13 @@ const upload = multer({
 
 // Middleware
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  origin: (origin, callback) => {
+    if (!origin || allowedCorsOrigins.includes('*') || allowedCorsOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(new Error(`CORS origin not allowed: ${origin}`));
+  },
   credentials: true,
 }));
 app.use(express.json({ limit: '500mb' }));
@@ -60,6 +86,9 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/providers', providersRoutes);
 app.use('/api/workflows', workflowsRoutes);
 app.use('/api/projects', projectsRoutes);
+app.use('/api/architectures', architecturesRoutes);
+app.use('/api/integrations', integrationsRoutes);
+app.use('/architectures', architecturesRoutes);
 
 // Serve agent avatars from workspaces
 app.get('/api/agents/:agentId/avatar/:filename', (req, res) => {
@@ -197,6 +226,10 @@ const server = app.listen(PORT, () => {
   console.log('   PATCH  /api/projects/:id');
   console.log('   POST   /api/projects/:id/open');
   console.log('   DELETE /api/projects/:id');
+  console.log('');
+  console.log('   Integrations:');
+  console.log('   GET    /api/integrations/feishu/webhook/:scope/:subjectId');
+  console.log('   POST   /api/integrations/feishu/:scope/:subjectId/:token');
   console.log('');
   console.log('   Agent Config:');
   console.log('   PATCH  /api/agents/:id/config');

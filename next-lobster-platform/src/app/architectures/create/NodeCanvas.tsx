@@ -248,7 +248,7 @@ export function StartNode({ data }: NodeProps<Node<{ label: string }>>) {
       <Handle
         type="source"
         position={Position.Right}
-        style={{ background: '#22c55e', border: '3px solid #fff', width: 14, height: 14, pointerEvents: 'none' }}
+        style={{ background: '#22c55e', border: '3px solid #fff', width: 14, height: 14 }}
       />
       <div className="flex flex-col items-center gap-1">
         <span className="bg-pixel-green text-pixel-black px-2 py-0.5 font-pixel text-xs">▶ 起点</span>
@@ -269,7 +269,7 @@ function EndNode({ data }: NodeProps<Node<{ label: string }>>) {
       <Handle
         type="target"
         position={Position.Left}
-        style={{ background: '#ef4444', border: '3px solid #fff', width: 14, height: 14, pointerEvents: 'none' }}
+        style={{ background: '#ef4444', border: '3px solid #fff', width: 14, height: 14 }}
       />
       <div className="flex flex-col items-center gap-1">
         <span className="bg-pixel-red text-pixel-white px-2 py-0.5 font-pixel text-xs">■ 终点</span>
@@ -434,6 +434,7 @@ interface NodeCanvasProps {
   activeTemplateId?: string;
   activeTemplateName?: string;
   onSelectTemplate?: (template: ArchTemplate) => void;
+  initialViewportMode?: 'overview' | 'fit';
 }
 
 function getConcreteAgentId(lobster?: Lobster | null): string | undefined {
@@ -493,6 +494,7 @@ export default function NodeCanvas({
   activeTemplateId,
   activeTemplateName,
   onSelectTemplate,
+  initialViewportMode = 'overview',
 }: NodeCanvasProps) {
   // Convert template nodes (ArchitectureNode[]) to ReactFlow Node[] with position
   const templateNodes: Node[] = initialTemplate?.nodes?.map((n) => ({
@@ -538,12 +540,17 @@ export default function NodeCanvas({
   const applyInitialViewport = useCallback((instance: ReactFlowInstance) => {
     window.requestAnimationFrame(() => {
       void (async () => {
-        await instance.fitView({ padding: 0.42, duration: 0 });
-        await instance.zoomOut({ duration: 0 });
-        await instance.zoomOut({ duration: 0 });
+        await instance.fitView({
+          padding: initialViewportMode === 'fit' ? 0.18 : 0.42,
+          duration: 0,
+        });
+        if (initialViewportMode === 'overview') {
+          await instance.zoomOut({ duration: 0 });
+          await instance.zoomOut({ duration: 0 });
+        }
       })();
     });
-  }, []);
+  }, [initialViewportMode]);
 
   // Sync agents to parent when template is loaded
   useEffect(() => {

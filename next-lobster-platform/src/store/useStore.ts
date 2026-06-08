@@ -55,6 +55,7 @@ interface LobsterStore {
   fetchCaves: () => Promise<void>;
   fetchAgents: (caveId?: string) => Promise<void>;
   fetchProjects: () => Promise<void>;
+  fetchArchitectures: () => Promise<void>;
 
   // Cave actions
   addCave: (cave: Cave) => void;
@@ -77,6 +78,8 @@ interface LobsterStore {
   // Architecture actions
   updateAgentStatus: (archId: string, agentId: string, status: ArchitectureAgent['status']) => void;
   addArchitecture: (architecture: Architecture) => void;
+  createArchitectureAPI: (architecture: Architecture) => Promise<Architecture>;
+  updateArchitectureAPI: (archId: string, updates: Partial<Architecture>) => Promise<Architecture>;
   updateAgentLink: (archId: string, agentId: string, lobsterId: string | null) => void;
   setActiveAgent: (id: string | null) => void;
   setCurrentTask: (task: string | null) => void;
@@ -387,6 +390,16 @@ export const useStore = create<LobsterStore>()(
     }
   },
 
+  fetchArchitectures: async () => {
+    try {
+      const architectures = await api.fetchArchitectures();
+      set({ architectures });
+    } catch (error) {
+      console.error('Failed to fetch architectures:', error);
+      set({ architectures: [] });
+    }
+  },
+
   // Cave actions
   addCave: (cave) => set((state) => ({ caves: [...state.caves, cave] })),
   removeCave: (id) => set((state) => ({ caves: state.caves.filter(c => c.id !== id) })),
@@ -458,8 +471,24 @@ export const useStore = create<LobsterStore>()(
 
   // Architecture actions
   addArchitecture: (architecture) => set((state) => ({
-    architectures: [architecture, ...state.architectures],
+    architectures: [architecture, ...state.architectures.filter((item) => item.id !== architecture.id)],
   })),
+  createArchitectureAPI: async (architecture) => {
+    const created = await api.createArchitecture(architecture);
+    set((state) => ({
+      architectures: [created, ...state.architectures.filter((item) => item.id !== created.id)],
+    }));
+    return created;
+  },
+  updateArchitectureAPI: async (archId, updates) => {
+    const updated = await api.updateArchitecture(archId, updates);
+    set((state) => ({
+      architectures: state.architectures.map((architecture) =>
+        architecture.id === archId ? updated : architecture
+      ),
+    }));
+    return updated;
+  },
   updateAgentStatus: (archId, agentId, status) => set((state) => ({
     architectures: state.architectures.map((architecture) =>
       architecture.id === archId
@@ -537,6 +566,7 @@ export const useStore = create<LobsterStore>()(
         get().fetchCaves(),
         get().fetchAgents(),
         get().fetchProjects(),
+        get().fetchArchitectures(),
       ]);
       set({ isInitialized: true });
     } catch (error) {

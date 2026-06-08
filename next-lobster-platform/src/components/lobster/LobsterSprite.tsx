@@ -88,14 +88,14 @@ export function LobsterSprite({
 }: LobsterSpriteProps) {
   const { activeLobsterId, setActiveLobster } = useStore();
   const isActive = activeLobsterId === lobster.id;
-  const shouldAnimateStatus = showProviderStatus ? false : (animateStatus ?? showStatus);
+  const shouldAnimateStatus = animateStatus ?? !silhouette;
   const isProviderConfigured = providerConfigured ?? hasConfiguredProvider(lobster);
   const shouldMute = muted || (showProviderStatus && !isProviderConfigured);
 
   const statusAnimations: Record<string, { y?: number[]; rotate?: number[]; scale?: number[]; opacity?: number[]; transition?: { duration: number; repeat: number } }> = {
-    idle: { y: [0, -2, 0], transition: { duration: 2.5, repeat: Infinity } },
-    working: { rotate: [-4, 4], transition: { duration: 0.3, repeat: Infinity } },
-    busy: { scale: [1, 1.06, 1], transition: { duration: 0.6, repeat: Infinity } },
+    idle: { y: [0, -2, 0], scale: [1, 1.035, 1], transition: { duration: 2.2, repeat: Infinity } },
+    working: { y: [0, -2, 0], rotate: [-3, 3], scale: [1, 1.04, 1], transition: { duration: 0.8, repeat: Infinity } },
+    busy: { scale: [1, 1.08, 1], transition: { duration: 0.6, repeat: Infinity } },
     error: { opacity: [1, 0.5, 1], transition: { duration: 1, repeat: Infinity } },
     offline: {},
   };

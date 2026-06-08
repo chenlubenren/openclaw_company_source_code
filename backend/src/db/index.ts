@@ -58,6 +58,10 @@ function ensureColumns() {
   if (projectCols.length > 0 && !projectCols.includes('git_commit')) {
     sqliteDb.exec(`ALTER TABLE projects ADD COLUMN git_commit TEXT NOT NULL DEFAULT ''`);
   }
+
+  if (projectCols.length > 0 && !projectCols.includes('agent_ids')) {
+    sqliteDb.exec(`ALTER TABLE projects ADD COLUMN agent_ids TEXT NOT NULL DEFAULT '[]'`);
+  }
 }
 
 export function getDb() {
@@ -258,6 +262,7 @@ export function getDb() {
         icon TEXT NOT NULL DEFAULT '/project-icons/folder-blue.svg',
         workspace_path TEXT NOT NULL,
         team_ids TEXT NOT NULL DEFAULT '[]',
+        agent_ids TEXT NOT NULL DEFAULT '[]',
         gantt_enabled INTEGER NOT NULL DEFAULT 0,
         gantt_plan TEXT NOT NULL DEFAULT '[]',
         git_remote TEXT NOT NULL DEFAULT '',

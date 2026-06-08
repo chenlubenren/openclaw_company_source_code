@@ -112,7 +112,8 @@ function activeTabForRoute(pathname: string, searchTab: string | null): MobileTa
   if (pathname.startsWith('/agent/') || pathname === '/agent') return 'contacts';
   if (pathname.startsWith('/market') || pathname.startsWith('/adopt')) return 'discover';
   if (pathname.startsWith('/settings') || pathname.startsWith('/my-den')) return 'me';
-  if (pathname.startsWith('/projects') || pathname.startsWith('/agent-tea-party')) return 'projects';
+  if (pathname.startsWith('/agent-tea-party')) return 'teams';
+  if (pathname.startsWith('/projects')) return 'projects';
   if (pathname.startsWith('/upload')) return 'discover';
   return 'projects';
 }
@@ -122,7 +123,7 @@ export function MobileAppNav() {
   const searchParams = useSearchParams();
   const [displayMode] = useMobileDisplayMode();
 
-  if (pathname.startsWith('/auth/')) return null;
+  if (pathname.startsWith('/auth/') || pathname.startsWith('/agent/') || pathname.startsWith('/agent-tea-party')) return null;
 
   const activeKey = activeTabForRoute(pathname, searchParams.get('mobileTab'));
   const careMode = displayMode === 'care';
@@ -141,7 +142,7 @@ export function MobileAppNav() {
             key={tab.key}
             href={tab.href}
             className={`relative flex flex-col items-center justify-center border-r-2 border-pixel-black/10 px-0 font-pixel last:border-r-0 ${
-              careMode ? 'min-h-[128px] gap-2 pb-3 pt-5 text-[1.32rem]' : 'min-h-[76px] gap-1 pb-1.5 pt-2 text-[0.72rem]'
+              careMode ? 'min-h-[104px] gap-1.5 pb-2.5 pt-4 text-[1.1rem]' : 'min-h-[62px] gap-0.5 pb-1 pt-1.5 text-[0.66rem]'
             } ${
               active ? 'bg-pixel-black text-pixel-white' : 'text-pixel-black/70'
             }`}
@@ -150,7 +151,7 @@ export function MobileAppNav() {
             <span
               data-mobile-nav-icon="true"
               className={`flex items-center justify-center border-pixel-black ${
-                careMode ? 'h-[clamp(58px,15vw,74px)] w-[clamp(58px,15vw,74px)] border-3' : 'h-[32px] w-[32px] border-2'
+                careMode ? 'h-[clamp(48px,13vw,62px)] w-[clamp(48px,13vw,62px)] border-3' : 'h-[28px] w-[28px] border-2'
               } ${
                 active ? tab.accent : 'bg-pixel-white'
               }`}

@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { PixelButton } from '@/components/ui/PixelButton';
+import { FeishuIntegrationCard } from '@/components/integration/FeishuIntegrationCard';
 import { getModelDisplayName, normalizeProviderModels } from '@/lib/providerPresets';
 
 interface Provider {
@@ -286,6 +287,14 @@ export function AgentSettingsPanel({ agent, token, onClose, onAgentUpdate }: Age
             </div>
           </section>
         )}
+
+        <div className="mt-4">
+          <FeishuIntegrationCard
+            scope="agent"
+            subjectId={agent.id}
+            subjectName={agent.name}
+          />
+        </div>
 
         {error && (
           <div className="mt-4 bg-pixel-red/20 border-4 border-pixel-red px-4 py-2 font-pixel text-sm text-pixel-red">

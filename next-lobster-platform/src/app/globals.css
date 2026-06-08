@@ -64,6 +64,19 @@ body::before {
   z-index: -1;
 }
 
+body[data-project-workspace-page="true"],
+body[data-project-workspace-page="true"]::before,
+body[data-project-workspace-page="true"] main[data-app-main="true"] {
+  background-color: #FFFFFF !important;
+  background-image: none !important;
+}
+
+body[data-project-workspace-page="true"] [data-project-workspace-root="true"],
+body[data-project-workspace-page="true"] [data-project-workspace-root="true"] section,
+body[data-project-workspace-page="true"] [data-project-workspace-root="true"] .bg-pixel-white {
+  background-color: #FFFFFF !important;
+}
+
 /* RPG Dialog Box Style */
 .rpg-dialog {
   background: #F8F8F8;
@@ -193,7 +206,7 @@ footer p {
   }
 
   [data-mobile-app-nav="true"] {
-    min-height: 76px;
+    min-height: 62px;
     position: fixed;
     left: 0;
     right: 0;
@@ -209,14 +222,14 @@ footer p {
   [data-mobile-app-nav="true"] a {
     position: relative;
     display: flex;
-    min-height: 76px;
+    min-height: 62px;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 4px;
-    padding: 8px 0 6px;
+    gap: 2px;
+    padding: 6px 0 4px;
     border-right: 2px solid rgba(16, 16, 16, 0.1);
-    font-size: 0.72rem;
+    font-size: 0.66rem;
     line-height: 1;
     text-align: center;
   }
@@ -227,8 +240,8 @@ footer p {
 
   [data-mobile-nav-icon="true"] {
     display: flex;
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
     align-items: center;
     justify-content: center;
   }
@@ -265,23 +278,23 @@ footer p {
   }
 
   html[data-mobile-display-mode="care"] [data-mobile-app-nav="true"] {
-    min-height: 128px;
+    min-height: 104px;
   }
 
   html[data-mobile-display-mode="care"] [data-app-main="true"] {
-    padding-bottom: 12rem;
+    padding-bottom: 10rem;
   }
 
   html[data-mobile-display-mode="care"] [data-mobile-app-nav="true"] a {
-    min-height: 128px;
-    gap: 8px;
-    padding: 20px 0 12px;
+    min-height: 104px;
+    gap: 6px;
+    padding: 16px 0 10px;
     font-size: 1.32rem;
   }
 
   html[data-mobile-display-mode="care"] [data-mobile-nav-icon="true"] {
-    width: clamp(58px, 15vw, 74px);
-    height: clamp(58px, 15vw, 74px);
+    width: clamp(48px, 13vw, 62px);
+    height: clamp(48px, 13vw, 62px);
   }
 
   [data-mobile-projects-page="true"] {

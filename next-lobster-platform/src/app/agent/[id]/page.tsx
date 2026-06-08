@@ -187,6 +187,7 @@ export default function AgentChatPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('chat');
   const [showSettings, setShowSettings] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeProvider, setActiveProvider] = useState<AgentProvider | null>(null);
   const [selectedModel, setSelectedModel] = useState('');
   const [savingModel, setSavingModel] = useState(false);
@@ -839,6 +840,14 @@ export default function AgentChatPage() {
     }
   };
 
+  const handleMobileBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+      return;
+    }
+    router.push('/?mobileTab=contacts');
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-pixel-cream">
@@ -863,17 +872,30 @@ export default function AgentChatPage() {
   }
 
   return (
-    <div className="min-h-screen bg-pixel-cream flex flex-col">
+    <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-pixel-cream md:min-h-screen md:overflow-visible">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-pixel-cream border-b-4 border-pixel-black"
+        className="shrink-0 border-b-4 border-pixel-black bg-pixel-cream"
       >
-        <div className="px-4 py-3">
+        <div className="relative px-3 py-2 md:px-4 md:py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <BackButton href="/my-den" />
+            <div className="flex min-w-0 items-center gap-2 md:gap-4">
+              <button
+                type="button"
+                onClick={handleMobileBack}
+                className="flex h-9 w-9 shrink-0 items-center justify-center border-2 border-pixel-black bg-pixel-white text-pixel-black md:hidden"
+                style={{ boxShadow: '2px 2px 0px 0px #101010' }}
+                aria-label="返回上一页"
+              >
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true">
+                  <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+                </svg>
+              </button>
+              <div className="hidden md:block">
+                <BackButton href="/" />
+              </div>
               
               {/* Agent Avatar */}
               <div className="relative">
@@ -881,10 +903,10 @@ export default function AgentChatPage() {
                   <img
                     src={agent.avatar}
                     alt={agent.name}
-                    className="w-12 h-12 pixelated border-4 border-pixel-black"
+                    className="h-9 w-9 border-2 border-pixel-black pixelated md:h-12 md:w-12 md:border-4"
                   />
                 ) : (
-                  <div className="w-12 h-12 bg-pixel-yellow border-4 border-pixel-black flex items-center justify-center font-pixel text-2xl">
+                  <div className="flex h-9 w-9 items-center justify-center border-2 border-pixel-black bg-pixel-yellow font-pixel text-lg md:h-12 md:w-12 md:border-4 md:text-2xl">
                     🦞
                   </div>
                 )}
@@ -894,10 +916,10 @@ export default function AgentChatPage() {
                 />
               </div>
               
-              <div>
-                <h1 className="font-pixel text-xl text-pixel-black">{agent.name}</h1>
+              <div className="min-w-0">
+                <h1 className="truncate font-pixel text-base leading-none text-pixel-black md:text-xl">{agent.name}</h1>
                 <div className="flex items-center gap-2">
-                  <span className="font-pixel text-xs text-pixel-black/60">
+                  <span className="hidden font-pixel text-xs text-pixel-black/60 sm:inline">
                     {agent.platform || 'unknown'}
                   </span>
                   <span className={`font-pixel text-xs px-2 py-0.5 border-2 border-pixel-black ${
@@ -910,7 +932,7 @@ export default function AgentChatPage() {
             </div>
 
             {/* Actions & Quick Stats */}
-            <div className="flex items-center gap-4">
+            <div className="hidden items-center gap-4 md:flex">
               {/* Quick Token Stats */}
               <TokenUsageDisplay stats={tokenStats} compact />
               
@@ -934,14 +956,114 @@ export default function AgentChatPage() {
                 </PixelButton>
               )}
             </div>
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen((open) => !open)}
+              className="flex h-9 w-9 shrink-0 items-center justify-center border-2 border-pixel-black bg-pixel-white font-pixel text-xl leading-none text-pixel-black md:hidden"
+              style={{ boxShadow: '2px 2px 0px 0px #101010' }}
+              aria-label="更多设置"
+            >
+              ...
+            </button>
           </div>
+
+          <AnimatePresence>
+            {mobileMenuOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                className="absolute right-3 top-[calc(100%+6px)] z-50 w-64 border-4 border-pixel-black bg-pixel-white p-2 md:hidden"
+                style={{ boxShadow: '4px 4px 0px 0px #101010' }}
+              >
+                <div className="grid grid-cols-3 gap-1 border-b-2 border-pixel-black pb-2">
+                  {([
+                    ['chat', '对话'],
+                    ['monitor', '监控'],
+                    ['capabilities', '能力'],
+                  ] as Array<[TabType, string]>).map(([tab, label]) => (
+                    <button
+                      key={tab}
+                      type="button"
+                      onClick={() => {
+                        setActiveTab(tab);
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`border-2 border-pixel-black px-2 py-1.5 font-pixel text-xs ${
+                        activeTab === tab ? 'bg-pixel-black text-pixel-white' : 'bg-pixel-white text-pixel-black'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-2 grid gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleNewSession();
+                      setMobileMenuOpen(false);
+                    }}
+                    disabled={creatingSession}
+                    className="border-2 border-pixel-black bg-pixel-yellow px-3 py-2 text-left font-pixel text-xs text-pixel-black disabled:opacity-50"
+                  >
+                    {creatingSession ? '创建中' : '新对话'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleStartRenameSession();
+                      setMobileMenuOpen(false);
+                    }}
+                    disabled={!activeConversationId || renamingSession}
+                    className="border-2 border-pixel-black bg-pixel-white px-3 py-2 text-left font-pixel text-xs text-pixel-black disabled:opacity-50"
+                  >
+                    重命名对话
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleExportSession();
+                      setMobileMenuOpen(false);
+                    }}
+                    disabled={!activeConversationId}
+                    className="border-2 border-pixel-black bg-pixel-blue px-3 py-2 text-left font-pixel text-xs text-pixel-white disabled:opacity-50"
+                  >
+                    导出对话
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowSettings(true);
+                      setMobileMenuOpen(false);
+                    }}
+                    className="border-2 border-pixel-black bg-pixel-white px-3 py-2 text-left font-pixel text-xs text-pixel-black"
+                  >
+                    Agent 设置
+                  </button>
+                  {(isSessionActive || awaitingResponse || agentState !== 'idle') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleStop();
+                        setMobileMenuOpen(false);
+                      }}
+                      className="border-2 border-pixel-black bg-pixel-red px-3 py-2 text-left font-pixel text-xs text-pixel-white"
+                    >
+                      停止
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Current Task Progress */}
           {agentState !== 'idle' && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
-              className="mt-3 px-4 py-2 bg-pixel-black/10 border-2 border-pixel-black"
+              className="mt-3 hidden border-2 border-pixel-black bg-pixel-black/10 px-4 py-2 md:block"
             >
               <div className="flex items-center gap-3">
                 <div className="animate-spin w-4 h-4 border-2 border-pixel-black border-t-transparent rounded-full" />
@@ -972,7 +1094,7 @@ export default function AgentChatPage() {
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-t-2 border-pixel-black">
+        <div className="hidden border-t-2 border-pixel-black md:flex">
           <button
             onClick={() => setActiveTab('chat')}
             className={`flex-1 px-4 py-2 font-pixel text-sm border-r-2 border-pixel-black transition-colors ${
@@ -1001,9 +1123,9 @@ export default function AgentChatPage() {
       </motion.div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         {/* Chat / Monitor / Settings Content */}
-        <div className="flex-1 overflow-y-auto">
+        <div className={`min-h-0 flex-1 ${activeTab === 'chat' ? 'overflow-hidden' : 'overflow-y-auto'} md:overflow-y-auto`}>
           {activeTab === 'chat' && (
             <ChatView
               messages={messages}
@@ -1082,7 +1204,7 @@ export default function AgentChatPage() {
               initial={{ x: 400, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: 400, opacity: 0 }}
-              className="w-96 border-l-4 border-pixel-black bg-pixel-cream overflow-y-auto"
+              className="fixed inset-0 z-50 w-full overflow-y-auto bg-pixel-cream md:relative md:inset-auto md:z-auto md:w-96 md:border-l-4 md:border-pixel-black"
             >
               <AgentSettingsPanel
                 agent={agent}
@@ -1337,8 +1459,8 @@ function ChatView(props: ChatViewProps) {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4">
-      <div className="mb-3 border-4 border-pixel-black bg-pixel-white p-3" style={{ boxShadow: '4px 4px 0px 0px #101010' }}>
+    <div className="flex h-full min-h-0 flex-col bg-pixel-cream md:mx-auto md:block md:max-w-4xl md:p-4">
+      <div className="mb-3 hidden border-4 border-pixel-black bg-pixel-white p-3 md:block" style={{ boxShadow: '4px 4px 0px 0px #101010' }}>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="relative min-w-0 flex-1" ref={sessionMenuRef}>
             <button
@@ -1482,13 +1604,13 @@ function ChatView(props: ChatViewProps) {
           </div>
         )}
       </div>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="rpg-dialog relative flex h-[800px] flex-col">
-        <div className="absolute top-0 left-0 w-6 h-6 bg-pixel-white border-r-4 border-b-4 border-pixel-black z-10" />
-        <div className="absolute top-0 right-0 w-6 h-6 bg-pixel-white border-l-4 border-b-4 border-pixel-black z-10" />
-        <div className="absolute bottom-0 left-0 w-6 h-6 bg-pixel-white border-r-4 border-t-4 border-pixel-black z-10" />
-        <div className="absolute bottom-0 right-0 w-6 h-6 bg-pixel-white border-l-4 border-t-4 border-pixel-black z-10" />
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="rpg-dialog relative flex min-h-0 flex-1 flex-col max-md:!border-x-0 max-md:!shadow-none md:h-[800px]">
+        <div className="absolute top-0 left-0 z-10 hidden h-6 w-6 border-b-4 border-r-4 border-pixel-black bg-pixel-white md:block" />
+        <div className="absolute top-0 right-0 z-10 hidden h-6 w-6 border-b-4 border-l-4 border-pixel-black bg-pixel-white md:block" />
+        <div className="absolute bottom-0 left-0 z-10 hidden h-6 w-6 border-r-4 border-t-4 border-pixel-black bg-pixel-white md:block" />
+        <div className="absolute bottom-0 right-0 z-10 hidden h-6 w-6 border-l-4 border-t-4 border-pixel-black bg-pixel-white md:block" />
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-6">
+        <div className="min-h-0 flex-1 overflow-y-auto p-3 md:p-6">
           {messages.length === 0 && (
             <div className="text-center py-8">
               <div className="font-pixel text-lg text-pixel-black/60 mb-2">对话开始</div>
@@ -1515,7 +1637,7 @@ function ChatView(props: ChatViewProps) {
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="border-t-4 border-pixel-white bg-pixel-black/50 p-4">
+        <div className="border-t-2 border-pixel-black bg-pixel-white p-2 md:border-t-4 md:border-pixel-white md:bg-pixel-black/50 md:p-4">
           <input
             ref={imageInputRef}
             type="file"
@@ -1524,7 +1646,7 @@ function ChatView(props: ChatViewProps) {
             className="hidden"
             onChange={handleImageInputChange}
           />
-          <div className="grid h-12 grid-cols-[36px_156px_minmax(0,1fr)_64px] gap-2">
+          <div className="grid h-12 grid-cols-[36px_minmax(0,1fr)_56px] gap-2 md:grid-cols-[36px_156px_minmax(0,1fr)_64px]">
             <button
               type="button"
               title={uploadingImage ? '正在上传图片' : '上传图片'}
@@ -1540,7 +1662,7 @@ function ChatView(props: ChatViewProps) {
               value={currentModel}
               onChange={(e) => onModelChange(e.target.value)}
               disabled={!isConnected || providerModelIds.length === 0 || savingModel}
-              className="h-full min-w-0 border-4 border-pixel-black bg-pixel-white px-2 font-pixel text-xs text-pixel-black disabled:opacity-50"
+              className="hidden h-full min-w-0 border-4 border-pixel-black bg-pixel-white px-2 font-pixel text-xs text-pixel-black disabled:opacity-50 md:block"
               title={activeProvider ? `当前供应商：${activeProvider.name}` : '暂无可用供应商'}
             >
               {providerModelIds.length === 0 ? (
@@ -1578,12 +1700,12 @@ function ChatView(props: ChatViewProps) {
           {(savingModel || composerStatus || canStopGenerating || !isConnected) && (
             <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
               <div className="flex min-h-[18px] items-center gap-3">
-                {savingModel && <p className="font-pixel text-[10px] text-pixel-white/50">正在切换模型...</p>}
+                {savingModel && <p className="font-pixel text-[10px] text-pixel-black/50 md:text-pixel-white/50">正在切换模型...</p>}
                 {!savingModel && composerStatus && (
-                  <span className="font-pixel text-[10px] text-pixel-white/70">{composerStatus}</span>
+                  <span className="font-pixel text-[10px] text-pixel-black/60 md:text-pixel-white/70">{composerStatus}</span>
                 )}
                 {!savingModel && !composerStatus && !isConnected && (
-                  <span className="font-pixel text-[10px] text-pixel-white/45">正在连接 {agent.name}...</span>
+                  <span className="font-pixel text-[10px] text-pixel-black/45 md:text-pixel-white/45">正在连接 {agent.name}...</span>
                 )}
               </div>
               {canStopGenerating && (

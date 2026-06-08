@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, Suspense, useMemo } from 'react';
+import { useState, useCallback, Suspense, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
@@ -40,7 +40,7 @@ export default function CreateArchitecturePage() {
 function CreateArchitecturePageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { addArchitecture } = useStore();
+  const { createArchitectureAPI, fetchAgents } = useStore();
 
   // Decode template from URL if present
   const encoded = searchParams.get('template');
@@ -55,6 +55,7 @@ function CreateArchitecturePageInner() {
   const [canvasNodes, setCanvasNodes] = useState<Node[]>([]);
   const [canvasEdges, setCanvasEdges] = useState<Edge[]>([]);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
 
   const activeTemplate = generatedTemplate ?? template;
   const referenceTemplates = useMemo(
@@ -68,6 +69,10 @@ function CreateArchitecturePageInner() {
       : activeTemplate
         ? 'template'
         : 'canvas';
+
+  useEffect(() => {
+    void fetchAgents();
+  }, [fetchAgents]);
 
   const handleSelectWorkflowMode = useCallback((nextTemplate: ArchTemplate) => {
     setGeneratedTemplate(nextTemplate);
@@ -120,7 +125,7 @@ function CreateArchitecturePageInner() {
     });
   }, [name, description, canvasNodes, canvasEdges, workflowSource, collaborationPattern]);
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!name.trim()) return;
 
     const build = buildWorkflowDslFromCanvas({
@@ -185,8 +190,15 @@ function CreateArchitecturePageInner() {
       createdAt: new Date().toISOString(),
     };
 
-    addArchitecture(newArchitecture);
-    router.push('/architectures/mine');
+    try {
+      setIsCreating(true);
+      await createArchitectureAPI(newArchitecture);
+      router.push('/architectures/mine');
+    } catch (error) {
+      setCreateError(error instanceof Error ? error.message : '创建团队失败');
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   return (
@@ -316,10 +328,26 @@ function CreateArchitecturePageInner() {
 
         {/* DSL Preview */}
         {workflowBuild && (
-          <div
+          <details
             className="bg-pixel-white border-4 border-pixel-black p-4 mb-6"
             style={{ boxShadow: '6px 6px 0px 0px #101010' }}
           >
+            <summary className="cursor-pointer list-none">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-pixel text-base text-pixel-black">Workflow DSL</h2>
+                  <p className="font-pixel text-xs text-pixel-black/50 mt-1">
+                    默认折叠显示，展开后查看校验提示与生成 JSON。
+                  </p>
+                </div>
+                <div className={`px-3 py-1 border-2 border-pixel-black font-pixel text-xs ${
+                  workflowBuild.errors.length === 0 ? 'bg-pixel-green text-pixel-white' : 'bg-pixel-red text-pixel-white'
+                }`}>
+                  {workflowBuild.errors.length === 0 ? '可执行' : `${workflowBuild.errors.length} 个错误`}
+                </div>
+              </div>
+            </summary>
+            <div className="mt-3">
             <div className="flex items-center justify-between gap-3 mb-3">
               <div>
                 <h2 className="font-pixel text-base text-pixel-black">Workflow DSL</h2>
@@ -369,7 +397,8 @@ function CreateArchitecturePageInner() {
                 {JSON.stringify(workflowBuild.dsl, null, 2)}
               </pre>
             </details>
-          </div>
+            </div>
+          </details>
         )}
 
         {/* Actions */}
@@ -384,12 +413,12 @@ function CreateArchitecturePageInner() {
           </PixelButton>
           <PixelButton
             onClick={handleCreate}
-            disabled={!name.trim() || canvasAgents.length === 0 || (workflowBuild?.errors.length ?? 0) > 0}
+            disabled={isCreating || !name.trim() || canvasAgents.length === 0 || (workflowBuild?.errors.length ?? 0) > 0}
             variant="primary"
             size="lg"
             className="flex-1"
           >
-            创建团队
+            {isCreating ? '保存中...' : '创建团队'}
           </PixelButton>
         </div>
 

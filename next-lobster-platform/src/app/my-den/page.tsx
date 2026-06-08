@@ -25,7 +25,6 @@ function AgentProviderAvatar({ lobster }: { lobster: Lobster }) {
         size="sm"
         showProviderStatus
         providerConfigured={configured}
-        animateStatus={false}
       />
     </div>
   );

@@ -156,7 +156,6 @@ export default function LobsterChatPage() {
               size="md"
               showProviderStatus
               providerConfigured={providerConfigured}
-              animateStatus={false}
             />
           </div>
           <div>
