@@ -302,3 +302,22 @@ export const providers = sqliteTable('providers', {
 
 export type Provider = typeof providers.$inferSelect;
 export type NewProvider = typeof providers.$inferInsert;
+
+// ==================== FEISHU INTEGRATIONS ====================
+export const feishuIntegrations = sqliteTable('feishu_integrations', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id),
+  scope: text('scope').notNull(), // 'agent' | 'team'
+  subjectId: text('subject_id').notNull(), // agent_instance_id or team_id
+  appId: text('app_id').notNull(),
+  appSecret: text('app_secret').notNull(),
+  chatId: text('chat_id'), // Optional group chat filter
+  verificationToken: text('verification_token'),
+  webhookSecret: text('webhook_secret'),
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+});
+
+export type FeishuIntegration = typeof feishuIntegrations.$inferSelect;
+export type NewFeishuIntegration = typeof feishuIntegrations.$inferInsert;

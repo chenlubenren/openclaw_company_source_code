@@ -372,6 +372,26 @@ export function getDb() {
       );
 
       CREATE INDEX IF NOT EXISTS idx_providers_user ON providers(user_id);
+
+      -- Feishu Integrations
+      CREATE TABLE IF NOT EXISTS feishu_integrations (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        scope TEXT NOT NULL,
+        subject_id TEXT NOT NULL,
+        app_id TEXT NOT NULL,
+        app_secret TEXT NOT NULL,
+        chat_id TEXT,
+        verification_token TEXT,
+        webhook_secret TEXT,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_feishu_integrations_user ON feishu_integrations(user_id);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_feishu_integrations_scope_subject ON feishu_integrations(scope, subject_id);
     `);
 
     // Ensure additive schema migrations for existing DBs
