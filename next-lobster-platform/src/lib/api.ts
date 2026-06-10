@@ -632,6 +632,79 @@ export async function fetchFeishuWebhookInfo(
   return payload.integration;
 }
 
+export interface FeishuConfig {
+  id: string;
+  scope: FeishuIntegrationScope;
+  subjectId: string;
+  appId: string;
+  appSecretMasked: string;
+  chatId?: string | null;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FeishuConfigInput {
+  appId: string;
+  appSecret: string;
+  chatId?: string;
+  verificationToken?: string;
+  webhookSecret?: string;
+}
+
+export async function getFeishuConfig(
+  scope: FeishuIntegrationScope,
+  subjectId: string
+): Promise<FeishuConfig | null> {
+  const res = await fetch(
+    `${API_BASE}/api/integrations/feishu/config/${scope}/${encodeURIComponent(subjectId)}`,
+    { headers: getAuthHeaders() }
+  );
+  if (res.status === 404) return null;
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(payload.message || '获取飞书配置失败');
+  }
+  return payload.config;
+}
+
+export async function saveFeishuConfig(
+  scope: FeishuIntegrationScope,
+  subjectId: string,
+  input: FeishuConfigInput
+): Promise<{ ok: boolean; id: string }> {
+  const res = await fetch(
+    `${API_BASE}/api/integrations/feishu/config/${scope}/${encodeURIComponent(subjectId)}`,
+    {
+      method: 'POST',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    }
+  );
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(payload.message || '保存飞书配置失败');
+  }
+  return payload;
+}
+
+export async function deleteFeishuConfig(
+  scope: FeishuIntegrationScope,
+  subjectId: string
+): Promise<void> {
+  const res = await fetch(
+    `${API_BASE}/api/integrations/feishu/config/${scope}/${encodeURIComponent(subjectId)}`,
+    {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    }
+  );
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(payload.message || '删除飞书配置失败');
+  }
+}
+
 // ==================== Workflow API ====================
 export interface GenerateWorkflowDslRequest {
   prompt: string;

@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import path from 'path';
 import { and, eq } from 'drizzle-orm';
 import { getDb } from '../db/index.js';
-import { conversations, type Message, type UserAgentInstance } from '../db/schema.js';
+import { conversations, feishuIntegrations, type Message, type UserAgentInstance } from '../db/schema.js';
 import { agentRunner, type AgentPlatform, type ProviderConfig } from './agent-runner.service.js';
 import {
   addMessage,
@@ -73,7 +73,7 @@ interface TenantTokenCache {
 
 const SUPPORTED_PLATFORMS: RuntimeAgentPlatform[] = ['claude-code', 'openclaw', 'codex', 'hermes', 'opencode', 'coze'];
 const processedEvents = new Map<string, number>();
-let tenantTokenCache: TenantTokenCache | null = null;
+const tenantTokenCache = new Map<string, TenantTokenCache>();
 
 export async function getFeishuWebhookInfo(
   userId: string,
@@ -84,7 +84,27 @@ export async function getFeishuWebhookInfo(
   if (!subjectName) return null;
 
   const backendBaseUrl = getPublicBackendBaseUrl();
-  const token = createWebhookToken(scope, subjectId);
+
+  // Look up per-config to use custom webhookSecret if available
+  const db = getDb();
+  const config = db
+    .select()
+    .from(feishuIntegrations)
+    .where(
+      and(
+        eq(feishuIntegrations.userId, userId),
+        eq(feishuIntegrations.scope, scope),
+        eq(feishuIntegrations.subjectId, subjectId)
+      )
+    )
+    .get();
+
+  const token = createWebhookToken(scope, subjectId, config?.webhookSecret?.trim() || undefined);
+
+  // Prefer per-config credentials over global env
+  const appId = config?.appId?.trim() || getFeishuAppId();
+  const appSecret = config?.appSecret?.trim() || getFeishuAppSecret();
+  const verificationToken = config?.verificationToken?.trim() || getFeishuVerificationToken();
 
   return {
     scope,
@@ -94,10 +114,10 @@ export async function getFeishuWebhookInfo(
     backendBaseUrl,
     token,
     envStatus: {
-      appIdConfigured: Boolean(getFeishuAppId()),
-      appSecretConfigured: Boolean(getFeishuAppSecret()),
-      verificationTokenConfigured: Boolean(getFeishuVerificationToken()),
-      webhookSecretConfigured: Boolean(process.env.FEISHU_WEBHOOK_SECRET?.trim()),
+      appIdConfigured: Boolean(appId),
+      appSecretConfigured: Boolean(appSecret),
+      verificationTokenConfigured: Boolean(verificationToken),
+      webhookSecretConfigured: Boolean(config?.webhookSecret?.trim() || process.env.FEISHU_WEBHOOK_SECRET?.trim()),
       publicBackendConfigured: Boolean(getConfiguredPublicBackendBaseUrl()),
     },
   };
@@ -109,7 +129,22 @@ export async function acceptFeishuWebhook(
   token: string,
   body: unknown
 ): Promise<FeishuWebhookResult> {
-  if (!isValidWebhookToken(scope, subjectId, token)) {
+  // Look up per-agent/team config first (subjectId is globally unique)
+  const db = getDb();
+  const config = db
+    .select()
+    .from(feishuIntegrations)
+    .where(
+      and(
+        eq(feishuIntegrations.scope, scope),
+        eq(feishuIntegrations.subjectId, subjectId)
+      )
+    )
+    .get();
+
+  // Validate token using per-config webhookSecret if available
+  const webhookSecret = config?.webhookSecret?.trim() || undefined;
+  if (!isValidWebhookToken(scope, subjectId, token, webhookSecret)) {
     throw new FeishuIntegrationError(403, '飞书回调地址 token 无效');
   }
 
@@ -122,7 +157,15 @@ export async function acceptFeishuWebhook(
     throw new FeishuIntegrationError(400, '当前接入暂不启用飞书事件加密，请在飞书后台将 Encrypt Key 留空后重试');
   }
 
-  verifyFeishuCallbackToken(payload);
+  // Use per-config verification token if available
+  if (config?.verificationToken) {
+    const actual = getString(payload.token) || getNestedString(payload, ['header', 'token']);
+    if (actual !== config.verificationToken) {
+      throw new FeishuIntegrationError(401, '飞书 Verification Token 校验失败');
+    }
+  } else {
+    verifyFeishuCallbackToken(payload);
+  }
 
   const challenge = getString(payload.challenge);
   if (challenge) {
@@ -138,7 +181,12 @@ export async function acceptFeishuWebhook(
     return { accepted: true, reason: 'duplicate' };
   }
 
-  void processFeishuMessage(context).catch((error: unknown) => {
+  // Optional chatId filter
+  if (config?.chatId && context.chatId !== config.chatId) {
+    return { ignored: true, reason: 'chatId 不匹配，当前配置仅监听指定群聊' };
+  }
+
+  void processFeishuMessage(context, config).catch((error: unknown) => {
     console.error('Feishu message processing failed:', error);
   });
 
@@ -169,16 +217,16 @@ function getWebhookSecret(): string {
   );
 }
 
-function createWebhookToken(scope: FeishuIntegrationScope, subjectId: string): string {
+function createWebhookToken(scope: FeishuIntegrationScope, subjectId: string, secret?: string): string {
   return crypto
-    .createHmac('sha256', getWebhookSecret())
+    .createHmac('sha256', secret || getWebhookSecret())
     .update(`${scope}:${subjectId}`)
     .digest('base64url')
     .slice(0, 32);
 }
 
-function isValidWebhookToken(scope: FeishuIntegrationScope, subjectId: string, token: string): boolean {
-  const expected = createWebhookToken(scope, subjectId);
+function isValidWebhookToken(scope: FeishuIntegrationScope, subjectId: string, token: string, secret?: string): boolean {
+  const expected = createWebhookToken(scope, subjectId, secret);
   const expectedBuffer = Buffer.from(expected);
   const actualBuffer = Buffer.from(token || '');
   return expectedBuffer.length === actualBuffer.length && crypto.timingSafeEqual(expectedBuffer, actualBuffer);
@@ -298,19 +346,25 @@ function isProcessedEvent(eventId: string): boolean {
   return false;
 }
 
-async function processFeishuMessage(context: FeishuEventContext): Promise<void> {
+async function processFeishuMessage(
+  context: FeishuEventContext,
+  config?: typeof feishuIntegrations.$inferSelect
+): Promise<void> {
   if (context.scope === 'agent') {
-    await processAgentMessage(context);
+    await processAgentMessage(context, config);
     return;
   }
 
-  await processTeamMessage(context);
+  await processTeamMessage(context, config);
 }
 
-async function processAgentMessage(context: FeishuEventContext): Promise<void> {
+async function processAgentMessage(
+  context: FeishuEventContext,
+  config?: typeof feishuIntegrations.$inferSelect
+): Promise<void> {
   const agent = await getAgentById(context.subjectId);
   if (!agent) {
-    await tryReply(context.messageId, '当前 Agent 不存在，无法处理飞书消息。');
+    await tryReply(context.messageId, '当前 Agent 不存在，无法处理飞书消息。', config);
     return;
   }
 
@@ -373,7 +427,7 @@ async function processAgentMessage(context: FeishuEventContext): Promise<void> {
       messageId: context.messageId,
       chatId: context.chatId,
     });
-    await tryReply(context.messageId, response);
+    await tryReply(context.messageId, response, config);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     await addMessage(conversation.id, 'system', message, {
@@ -381,24 +435,27 @@ async function processAgentMessage(context: FeishuEventContext): Promise<void> {
       scope: context.scope,
       outputType: 'error',
     });
-    await tryReply(context.messageId, `Agent 执行失败：${message}`);
+    await tryReply(context.messageId, `Agent 执行失败：${message}`, config);
   }
 }
 
-async function processTeamMessage(context: FeishuEventContext): Promise<void> {
+async function processTeamMessage(
+  context: FeishuEventContext,
+  config?: typeof feishuIntegrations.$inferSelect
+): Promise<void> {
   const resolved = await getArchitectureByIdAnyUser(context.subjectId);
   if (!resolved) {
-    await tryReply(context.messageId, '当前团队不存在，无法处理飞书消息。');
+    await tryReply(context.messageId, '当前团队不存在，无法处理飞书消息。', config);
     return;
   }
 
   const { architecture, userId } = resolved;
   if (!isWorkflowDsl(architecture.workflowDsl)) {
-    await tryReply(context.messageId, '当前团队还没有可执行的 Workflow DSL，请先在团队画布中保存架构。');
+    await tryReply(context.messageId, '当前团队还没有可执行的 Workflow DSL，请先在团队画布中保存架构。', config);
     return;
   }
 
-  await tryReply(context.messageId, `已收到，团队「${architecture.name}」开始处理：${context.text}`);
+  await tryReply(context.messageId, `已收到，团队「${architecture.name}」开始处理：${context.text}`, config);
 
   try {
     const execution = await workflowExecutor.start({
@@ -417,12 +474,13 @@ async function processTeamMessage(context: FeishuEventContext): Promise<void> {
     if (!finalExecution) {
       await tryReply(
         context.messageId,
-        `团队任务仍在执行中。执行 ID：${execution.id}，可回到平台的团队详情页查看进度。`
+        `团队任务仍在执行中。执行 ID：${execution.id}，可回到平台的团队详情页查看进度。`,
+        config
       );
       return;
     }
 
-    await tryReply(context.messageId, formatWorkflowReply(architecture.name, finalExecution));
+    await tryReply(context.messageId, formatWorkflowReply(architecture.name, finalExecution), config);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     await tryReply(context.messageId, `团队执行失败：${message}`);
@@ -591,17 +649,27 @@ function formatWorkflowReply(teamName: string, execution: WorkflowExecution): st
   return lines.join('\n');
 }
 
-async function tryReply(messageId: string, text: string): Promise<void> {
+async function tryReply(
+  messageId: string,
+  text: string,
+  config?: typeof feishuIntegrations.$inferSelect
+): Promise<void> {
   if (!messageId) return;
   try {
-    await sendFeishuReply(messageId, text);
+    await sendFeishuReply(messageId, text, config);
   } catch (error) {
     console.error('Failed to reply Feishu message:', error);
   }
 }
 
-async function sendFeishuReply(messageId: string, text: string): Promise<void> {
-  const token = await getTenantAccessToken();
+async function sendFeishuReply(
+  messageId: string,
+  text: string,
+  config?: typeof feishuIntegrations.$inferSelect
+): Promise<void> {
+  const token = config
+    ? await getTenantAccessToken(config.appId, config.appSecret)
+    : await getTenantAccessToken();
   const response = await fetch(`https://open.feishu.cn/open-apis/im/v1/messages/${encodeURIComponent(messageId)}/reply`, {
     method: 'POST',
     headers: {
@@ -620,16 +688,20 @@ async function sendFeishuReply(messageId: string, text: string): Promise<void> {
   }
 }
 
-async function getTenantAccessToken(): Promise<string> {
-  const now = Date.now();
-  if (tenantTokenCache && tenantTokenCache.expiresAt > now + 60000) {
-    return tenantTokenCache.token;
-  }
-
-  const appId = getFeishuAppId();
-  const appSecret = getFeishuAppSecret();
+async function getTenantAccessToken(
+  appIdArg?: string,
+  appSecretArg?: string
+): Promise<string> {
+  const appId = (appIdArg || getFeishuAppId()).trim();
+  const appSecret = (appSecretArg || getFeishuAppSecret()).trim();
   if (!appId || !appSecret) {
     throw new Error('请在 backend/.env 配置 FEISHU_APP_ID 与 FEISHU_APP_SECRET');
+  }
+
+  const now = Date.now();
+  const cached = tenantTokenCache.get(appId);
+  if (cached && cached.expiresAt > now + 60000) {
+    return cached.token;
   }
 
   const response = await fetch('https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal', {
@@ -647,10 +719,10 @@ async function getTenantAccessToken(): Promise<string> {
   }
 
   const expireSec = typeof payload.expire === 'number' ? payload.expire : 7200;
-  tenantTokenCache = {
+  tenantTokenCache.set(appId, {
     token,
     expiresAt: now + Math.max(60, expireSec - 60) * 1000,
-  };
+  });
   return token;
 }
 
@@ -678,4 +750,94 @@ function truncateReplyText(value: string, maxChars: number): string {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// ==================== Per-Agent/Team Feishu Config ====================
+
+export interface FeishuConfigInput {
+  appId: string;
+  appSecret: string;
+  chatId?: string;
+  verificationToken?: string;
+  webhookSecret?: string;
+}
+
+export async function getFeishuConfig(
+  userId: string,
+  scope: FeishuIntegrationScope,
+  subjectId: string
+) {
+  const db = getDb();
+  const row = db
+    .select()
+    .from(feishuIntegrations)
+    .where(
+      and(
+        eq(feishuIntegrations.userId, userId),
+        eq(feishuIntegrations.scope, scope),
+        eq(feishuIntegrations.subjectId, subjectId)
+      )
+    )
+    .get();
+  return row || null;
+}
+
+export async function saveFeishuConfig(
+  userId: string,
+  scope: FeishuIntegrationScope,
+  subjectId: string,
+  input: FeishuConfigInput
+) {
+  const db = getDb();
+  const existing = await getFeishuConfig(userId, scope, subjectId);
+  const now = new Date();
+
+  if (existing) {
+    await db
+      .update(feishuIntegrations)
+      .set({
+        appId: input.appId.trim(),
+        appSecret: input.appSecret.trim(),
+        chatId: input.chatId?.trim() || null,
+        verificationToken: input.verificationToken?.trim() || null,
+        webhookSecret: input.webhookSecret?.trim() || null,
+        updatedAt: now,
+      })
+      .where(eq(feishuIntegrations.id, existing.id));
+    return existing.id;
+  }
+
+  const id = crypto.randomUUID();
+  await db.insert(feishuIntegrations).values({
+    id,
+    userId,
+    scope,
+    subjectId,
+    appId: input.appId.trim(),
+    appSecret: input.appSecret.trim(),
+    chatId: input.chatId?.trim() || null,
+    verificationToken: input.verificationToken?.trim() || null,
+    webhookSecret: input.webhookSecret?.trim() || null,
+    enabled: true,
+    createdAt: now,
+    updatedAt: now,
+  });
+  return id;
+}
+
+export async function deleteFeishuConfig(
+  userId: string,
+  scope: FeishuIntegrationScope,
+  subjectId: string
+) {
+  const db = getDb();
+  await db
+    .delete(feishuIntegrations)
+    .where(
+      and(
+        eq(feishuIntegrations.userId, userId),
+        eq(feishuIntegrations.scope, scope),
+        eq(feishuIntegrations.subjectId, subjectId)
+      )
+    );
 }
