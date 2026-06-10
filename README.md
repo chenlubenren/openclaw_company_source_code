@@ -1,47 +1,140 @@
-# OpenClaw Company Source Code
+# ShrimpCrab · 虾兵蟹将
 
-OpenClaw is a split frontend/backend AI agent management platform.
+[简体中文](README.md) | [English](README.en.md)
 
-- Frontend: `next-lobster-platform`, Next.js 14 + React + Tailwind CSS
-- Backend: `backend`, Express + TypeScript + SQLite + WebSocket
-- Desktop helper: `openclaw-desktop-client`, optional local Electron client
+<p align="center">
+  <img src="claw_profile/03.png" alt="ShrimpCrab Mascot" width="160" />
+</p>
 
-This repository is prepared for separate deployment: the frontend can run on one server, while the backend API and WebSocket service run on another server.
+<p align="center">
+  面向复杂知识工作的多 Agent 协作平台
+</p>
 
-## Repository Layout
+<p align="center">
+  <a href="http://121.40.242.77/">在线体验</a> ·
+  <a href="https://my.feishu.cn/wiki/XioNwVrxOiYDy5kiwOtcUWdjnFb">产品文档</a> ·
+  <a href="https://my.feishu.cn/wiki/ToFZwV492ilwqEkxRgGckd65nSc">技术文档</a>
+</p>
+
+## 一句话介绍
+
+ShrimpCrab 是一个面向复杂知识工作的多 Agent 协作平台，统一承载单 Agent 使用、多 Agent 团队编排与 Project Workspace 沉淀。
+
+## 它解决什么问题
+
+很多 AI 产品能回答问题，但很难承接真实工作：能力分散、协作结构不可见、结果不沉淀、上下文难复用。ShrimpCrab 关注的不是“再做一个聊天框”，而是把能力获取、团队编排、任务执行和结果沉淀串成一条完整工作链路。
+
+它主要面向两类场景：
+
+- 需要快速调用单个 Agent 完成具体任务的日常使用场景
+- 需要多个 Agent 分工协作、持续推进并沉淀产物的复杂知识工作场景
+
+## 产品架构
+
+![ShrimpCrab 平台结构](docs/readme-assets/feishu/product-structure.jpg)
+
+产品由两条核心能力线和三个支撑模块构成：
+
+- **Single Agent**：负责 Agent 的获取、配置、会话与日常使用
+- **Agent Team**：负责多 Agent 的组织、编排、协作推进与任务执行
+- **Project Workspace**：负责承接上下文、执行过程、日志与产物沉淀
+- **Agent Market**：负责能力发现、复用与流转
+- **Multi-surface & Integrations**：负责 Web、移动端、桌面端以及飞书等外部入口
+
+这 5 个模块对应一条完整使用路径：先获得能力，再组织协作，最后把过程和结果沉淀为可继续复用的工作资产。
+
+## 核心使用路径
+
+1. 从 Agent Market 领养现成 Agent，或上传自己的 Agent。
+2. 在 Single Agent 模式下完成配置、试运行和独立会话。
+3. 把多个 Agent 组织成 Team，通过自然语言或画布进行编排。
+4. 通过 Workflow 执行复杂任务，把消息、文件、日志和产物沉淀到 Project Workspace。
+5. 在桌面端、本地导入和外部协作入口中继续复用这些能力资产。
+
+## 产品截图
+
+### 首页
+
+![ShrimpCrab 首页](docs/readme-assets/feishu/product-home.png)
+
+### 团队画布编排
+
+![ShrimpCrab 团队画布](docs/readme-assets/feishu/product-canvas.png)
+
+### 桌面端
+
+![ShrimpCrab 桌面端](docs/readme-assets/feishu/product-desktop.png)
+
+### 本地 Agent 导入
+
+![ShrimpCrab 本地 Agent 导入](docs/readme-assets/feishu/product-local-import.png)
+
+## 技术架构
+
+从实现上看，ShrimpCrab 采用分层协作架构：
+
+- **Client Layer**：Web、移动端、桌面端
+- **Platform Service Layer**：Express API、鉴权、文件服务、Provider 管理、市场与集成接口
+- **Orchestration Runtime Layer**：Workflow DSL、A2A Wrapper、Workflow Executor、Agent Runner
+- **Agent Execution Layer**：OpenClaw、Claude Code、Codex、Hermes、OpenCode、Coze 等执行端
+- **Persistence Layer**：SQLite、会话消息、项目空间、运行目录、产物与日志
+
+### 系统整体架构
+
+![系统整体架构](docs/readme-assets/feishu/arch-system.jpg)
+
+### 产品模块与技术层的对应关系
+
+- `Single Agent`：Agent 管理接口、Provider 配置、会话系统、运行时调度
+- `Agent Team`：Workflow DSL、A2A Wrapper、Executor
+- `Project Workspace`：项目模型、工作目录、运行目录、产物目录
+- `Agent Market`：市场资源模型、下载/复用链路、发布流程
+- `Multi-surface & Integrations`：多端 UI、桌面壳层、飞书接入
+
+### DSL 执行状态机
+
+![DSL 执行状态机](docs/readme-assets/feishu/arch-workflow-state.jpg)
+
+### 实时消息流转
+
+![实时消息流转](docs/readme-assets/feishu/arch-message-flow.jpg)
+
+### 核心对象 ERD
+
+![核心对象 ERD](docs/readme-assets/feishu/arch-erd.jpg)
+
+## 技术栈
+
+| 层级 | 技术选型 |
+| --- | --- |
+| 前端 | Next.js 14、React 18、TypeScript、Tailwind CSS、Framer Motion、Zustand、`@xyflow/react` |
+| 后端 | Node.js 22、Express、TypeScript、WebSocket (`ws`) |
+| 数据层 | SQLite、`better-sqlite3`、Drizzle ORM |
+| 鉴权 | JWT、`bcryptjs` |
+| 文件与上传 | `multer`、本地文件系统工作空间 |
+| 桌面端 | Electron |
+
+## 仓库结构
 
 ```text
 .
-├── backend/                 # Express API, SQLite data, WebSocket chat server
-├── next-lobster-platform/   # Next.js frontend
-├── openclaw-desktop-client/ # Optional desktop client
-├── docs/                    # Product and design notes
-└── docker-compose.yml       # Backend Docker deployment helper
+├── backend/                  # Express API、Workflow 运行时、SQLite、WebSocket
+├── next-lobster-platform/    # Next.js Web / Mobile 前端
+├── openclaw-desktop-client/  # Electron 桌面端
+├── docs/                     # 产品/技术文档与 README 素材
+├── diagrams/                 # 图示与设计产物
+└── claw_profile/             # 角色头像与像素素材
 ```
 
-## Security Rules
+## 快速开始
 
-Do not commit real secrets.
-
-Ignored by git:
-
-- `.env`, `.env.*`, `.env.local`, `.env.production`
-- `backend/data/`
-- `node_modules/`, `.next/`, `dist/`, logs, local tool output
-
-Only commit example files such as `.env.example`.
-
-If a token, server password, or API key was ever pasted into a chat, terminal, README, git remote URL, or issue, rotate it immediately. Use SSH keys and a deploy user for servers instead of password-based root login.
-
-## Local Development
-
-Requirements:
+### 环境要求
 
 - Node.js 22+
 - npm
-- Windows, Linux, or WSL
+- macOS / Linux / Windows / WSL
 
-Install and run the backend:
+### 启动后端
 
 ```bash
 cd backend
@@ -50,12 +143,12 @@ npm install
 npm run dev
 ```
 
-The backend listens on:
+默认端口：
 
-- HTTP API: `http://localhost:3002`
-- WebSocket: `ws://localhost:3003`
+- REST API：`http://localhost:3002`
+- WebSocket：`ws://localhost:3003`
 
-Install and run the frontend:
+### 启动前端
 
 ```bash
 cd next-lobster-platform
@@ -64,304 +157,28 @@ npm install
 npm run dev
 ```
 
-The frontend listens on `http://localhost:3000`.
+默认地址：
 
-## Environment Variables
+- Web：`http://localhost:3000`
 
-### Backend: `backend/.env`
-
-```bash
-NODE_ENV=production
-PORT=3002
-WS_PORT=3003
-WORKSPACE_ROOT=/opt/openclaw/data/workspaces
-JWT_SECRET=replace-with-a-long-random-secret
-PUBLIC_BACKEND_URL=http://121.40.242.77
-FEISHU_PUBLIC_BASE_URL=http://121.40.242.77
-CORS_ORIGIN=http://121.40.242.77
-COZE_API_BASE=https://api.coze.com
-COZE_API_TOKEN=
-COZE_MARKET_BOTS=[]
-```
-
-Notes:
-
-- `JWT_SECRET` must be changed in production.
-- `WORKSPACE_ROOT` must point to a writable directory on the backend server.
-- `PUBLIC_BACKEND_URL` is the public browser-accessible backend URL.
-- `FEISHU_PUBLIC_BASE_URL` is used when generating Feishu event callback URLs. If `http://121.40.242.77` does not proxy `/api` to the backend, set it to `http://121.40.242.77:3002` instead.
-- `CORS_ORIGIN` must match the frontend origin. Multiple origins can be comma-separated.
-
-### Frontend: `next-lobster-platform/.env.production`
+### 启动桌面端（可选）
 
 ```bash
-NEXT_PUBLIC_API_URL=http://121.40.242.77
-NEXT_PUBLIC_WS_URL=ws://121.40.242.77/ws
-BACKEND_INTERNAL_URL=http://127.0.0.1:3002
+cd openclaw-desktop-client
+npm install
+npm run dev
 ```
 
-Notes:
-
-- `NEXT_PUBLIC_API_URL` is baked into the browser bundle during `npm run build`.
-- `NEXT_PUBLIC_WS_URL` is the browser-facing WebSocket URL.
-- `BACKEND_INTERNAL_URL` is only used by Next.js rewrites. It can be omitted if the frontend calls the backend directly through `NEXT_PUBLIC_API_URL`.
-
-## Build Check
-
-Run these before publishing:
-
-```bash
-cd backend
-npm run build
-
-cd ../next-lobster-platform
-npm run build
-```
-
-## Upload to GitHub
-
-Use a private repository first unless you have completed a full secret review.
-
-```bash
-git status
-git remote -v
-git add .
-git commit -m "Prepare production deployment docs and configuration"
-git push origin main
-```
-
-Do not put a GitHub personal access token inside the remote URL. Use GitHub CLI or SSH:
-
-```bash
-gh auth login
-```
-
-or:
-
-```bash
-git remote set-url origin git@github.com:<owner>/<repo>.git
-```
-
-## Production Deployment Overview
-
-Recommended public URLs:
-
-- Frontend: `https://app.example.com`
-- Backend API: `https://api.example.com`
-- Backend WebSocket: `wss://api.example.com/ws`
-
-Temporary IP-based deployment is also possible:
-
-- Frontend: `http://<frontend-public-ip>`
-- Backend API: `http://<backend-public-host>:3002`
-- Backend WebSocket: `ws://<backend-public-host>:3003`
-
-For public production, prefer domain names, HTTPS, Nginx reverse proxy, and closed direct access to Node.js ports.
-
-## Deploy Backend on AutoDL
-
-AutoDL instance IDs are not SSH addresses. In the AutoDL console, find the SSH host, SSH port, and public port mapping. The backend needs public access for HTTP and WebSocket.
-
-Install runtime dependencies:
-
-```bash
-apt update
-apt install -y git curl build-essential python3 nginx
-curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
-apt install -y nodejs
-npm install -g pm2
-```
-
-Clone, configure, build, and start:
-
-```bash
-cd /opt
-git clone https://github.com/chenlubenren/openclaw_company_source_code.git openclaw
-cd /opt/openclaw/backend
-cp .env.example .env
-nano .env
-npm ci
-npm run build
-pm2 start dist/index.js --name openclaw-backend
-pm2 save
-```
-
-Verify locally:
-
-```bash
-curl http://127.0.0.1:3002/health
-pm2 logs openclaw-backend
-```
-
-If you expose raw ports for a temporary test, map/open:
-
-- `3002` for HTTP API
-- `3003` for WebSocket
-
-For production, use Nginx:
-
-```nginx
-server {
-  listen 80;
-  server_name api.example.com;
-
-  location / {
-    proxy_pass http://127.0.0.1:3002;
-    proxy_set_header Host $host;
-    proxy_set_header X-Forwarded-Proto $scheme;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-  }
-
-  location /ws {
-    proxy_pass http://127.0.0.1:3003;
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection "upgrade";
-    proxy_set_header Host $host;
-    proxy_set_header X-Forwarded-Proto $scheme;
-  }
-}
-```
-
-Then set:
-
-```bash
-PUBLIC_BACKEND_URL=http://121.40.242.77
-FEISHU_PUBLIC_BASE_URL=http://121.40.242.77
-CORS_ORIGIN=http://121.40.242.77
-```
-
-If you expose backend port `3002` directly instead of proxying `/api` and `/auth` through port `80`, use `http://121.40.242.77:3002` for `PUBLIC_BACKEND_URL`, `FEISHU_PUBLIC_BASE_URL`, and `NEXT_PUBLIC_API_URL`.
-
-## Deploy Frontend on Alibaba Cloud ECS
-
-The `172.26.x.x` address is a private VPC address. Public users need the ECS public IP, EIP, or a domain pointing to the ECS public IP.
-
-Install runtime dependencies:
-
-```bash
-apt update
-apt install -y git curl nginx
-curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
-apt install -y nodejs
-npm install -g pm2
-```
-
-Clone, configure, build, and start:
-
-```bash
-cd /opt
-git clone https://github.com/chenlubenren/openclaw_company_source_code.git openclaw
-cd /opt/openclaw/next-lobster-platform
-cp .env.example .env.production
-nano .env.production
-npm ci
-npm run build
-pm2 start npm --name openclaw-frontend -- start -- -p 3000
-pm2 save
-```
-
-Example `.env.production` for direct backend access:
-
-```bash
-NEXT_PUBLIC_API_URL=http://<backend-public-host>:3002
-NEXT_PUBLIC_WS_URL=ws://<backend-public-host>:3003
-```
-
-Example `.env.production` for Nginx + HTTPS backend:
-
-```bash
-NEXT_PUBLIC_API_URL=https://api.example.com
-NEXT_PUBLIC_WS_URL=wss://api.example.com/ws
-```
-
-Nginx frontend proxy:
-
-```nginx
-server {
-  listen 80;
-  server_name app.example.com;
-
-  location / {
-    proxy_pass http://127.0.0.1:3000;
-    proxy_set_header Host $host;
-    proxy_set_header X-Forwarded-Proto $scheme;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-  }
-}
-```
-
-Open the ECS security group for:
-
-- `80` and `443` for public web traffic
-- SSH only from your own IP if possible
-
-## Update Deployment
-
-Backend:
-
-```bash
-cd /opt/openclaw
-git pull
-cd backend
-npm ci
-npm run build
-pm2 restart openclaw-backend --update-env
-```
-
-Frontend:
-
-```bash
-cd /opt/openclaw
-git pull
-cd next-lobster-platform
-npm ci
-npm run build
-pm2 restart openclaw-frontend --update-env
-```
-
-## Health Checks
-
-Backend:
-
-```bash
-curl http://127.0.0.1:3002/health
-curl https://api.example.com/health
-```
-
-Frontend:
-
-```bash
-curl http://127.0.0.1:3000
-curl https://app.example.com
-```
-
-Runtime logs:
-
-```bash
-pm2 status
-pm2 logs openclaw-backend
-pm2 logs openclaw-frontend
-```
-
-## Common Problems
-
-`CORS origin not allowed`
-
-Set backend `CORS_ORIGIN` to the exact frontend origin, including protocol and port.
-
-Frontend still calls localhost after deployment
-
-Set `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_WS_URL` before running `npm run build`, then rebuild and restart the frontend.
-
-WebSocket fails
-
-Check `NEXT_PUBLIC_WS_URL`, firewall rules, AutoDL port mapping, and Nginx `Upgrade` headers.
-
-SQLite database missing or reset
-
-Make sure `backend/data/` or the Docker volume is persistent and writable.
-
-Cannot access `172.26.x.x`
-
-That is a private address. Use the ECS public IP, EIP, VPN/VPC connectivity, or a domain bound to a public IP.
+## 相关文档
+
+- [产品文档](https://my.feishu.cn/wiki/XioNwVrxOiYDy5kiwOtcUWdjnFb)
+- [技术文档](https://my.feishu.cn/wiki/ToFZwV492ilwqEkxRgGckd65nSc)
+- [`docs/agent-platform-prd.md`](docs/agent-platform-prd.md)
+- [`backend/DEPLOY.md`](backend/DEPLOY.md)
+
+## 当前边界
+
+- 公网演示中的部分流程需要登录后才能完整体验
+- Agent 执行依赖 OpenClaw、Codex、Claude Code、Hermes、OpenCode 等外部或本地 CLI 运行时
+- 当前持久化以 SQLite 为主，适合快速迭代与轻量部署
+- 仓库已经覆盖产品主骨架、工作流编排链路、项目空间模型和多入口 UI
