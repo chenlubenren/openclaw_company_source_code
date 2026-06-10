@@ -1548,6 +1548,12 @@ router.delete('/:id', async (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user!.userId;
     const id = String(req.params.id);
 
+    await agentRunner.stopSessionsByAgentId(id);
+    const marketCleanup = await unpublishAgentFromMarket(userId, id);
+    if (!marketCleanup.success && marketCleanup.error !== '此 Agent 尚未上架到市场') {
+      console.warn(`Delete agent market cleanup skipped for ${id}: ${marketCleanup.error}`);
+    }
+
     const success = await deleteAgent(id, userId);
     if (!success) {
       res.status(404).json({ message: 'Agent不存在' });

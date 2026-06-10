@@ -10,10 +10,8 @@ import { useDesktopDisplayMode } from '@/lib/desktopDisplayMode';
 
 interface HeaderProps {
   traditionalMode?: boolean;
-  traditionalSidebarAvailable?: boolean;
   traditionalSidebarOpen?: boolean;
   traditionalSidebarWidth?: number;
-  onTraditionalSidebarToggle?: () => void;
 }
 
 function DisplayModeIcon({ mode }: { mode: 'professional' | 'traditional' }) {
@@ -53,37 +51,10 @@ function DesktopDisplayModeToggle() {
   );
 }
 
-function TraditionalSidebarToggleButton({
-  open,
-  onToggle,
-}: {
-  open: boolean;
-  onToggle?: () => void;
-}) {
-  return (
-    <motion.button
-      type="button"
-      aria-label={open ? '收起传统模式侧边栏' : '展开传统模式侧边栏'}
-      title={open ? '收起侧边栏' : '展开侧边栏'}
-      onClick={onToggle}
-      whileHover={{ y: -1 }}
-      whileTap={{ y: 1, scale: 0.96 }}
-      className="hidden h-12 w-12 shrink-0 items-center justify-center border-4 border-pixel-white bg-pixel-black text-pixel-white transition-colors hover:border-pixel-yellow hover:text-pixel-yellow md:flex"
-      style={{ boxShadow: '2px 2px 0px 0px #101010' }}
-    >
-      <svg viewBox="0 0 24 24" className="h-7 w-7" aria-hidden="true" shapeRendering="crispEdges">
-        <path fill="currentColor" d={open ? 'M14 5 7 12l7 7v-5h7v-4h-7V5Z' : 'M10 5v5H3v4h7v5l7-7-7-7Z'} />
-      </svg>
-    </motion.button>
-  );
-}
-
 export function Header({
   traditionalMode = false,
-  traditionalSidebarAvailable = false,
   traditionalSidebarOpen = false,
   traditionalSidebarWidth = 0,
-  onTraditionalSidebarToggle,
 }: HeaderProps) {
   const { user, token } = useAuthStore();
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -100,12 +71,6 @@ export function Header({
         style={headerContentStyle}
       >
         <div className={`flex min-w-0 items-center gap-4 ${traditionalMode ? 'ml-[3px]' : ''}`}>
-          {traditionalMode && traditionalSidebarAvailable && (
-            <TraditionalSidebarToggleButton
-              open={traditionalSidebarOpen}
-              onToggle={onTraditionalSidebarToggle}
-            />
-          )}
           <Link href="/" className={`flex min-w-0 items-center gap-4 no-underline ${traditionalMode ? 'pr-4' : ''}`}>
             <div className="flex h-12 w-12 shrink-0 items-center justify-center border-4 border-pixel-white bg-pixel-red">
               <svg viewBox="0 0 24 24" className="w-7 h-7 text-pixel-white">

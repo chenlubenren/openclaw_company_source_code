@@ -18,6 +18,7 @@ interface ClientLayoutProps {
 type SidebarIcon = 'home' | 'agents' | 'teams' | 'projects' | 'tea' | 'market' | 'settings';
 
 const SIDEBAR_WIDTH_STORAGE_KEY = 'openclaw.traditionalSidebarWidth';
+const SIDEBAR_OPEN_STORAGE_KEY = 'openclaw.traditionalSidebarOpen';
 const SIDEBAR_DEFAULT_WIDTH = 292;
 const SIDEBAR_MIN_WIDTH = 236;
 const SIDEBAR_MAX_WIDTH = 420;
@@ -84,11 +85,13 @@ function TraditionalDesktopSidebar({
   pathname,
   width,
   onWidthChange,
+  onToggle,
 }: {
   open: boolean;
   pathname: string;
   width: number;
   onWidthChange: (width: number) => void;
+  onToggle: () => void;
 }) {
   const navItems: Array<{ href: string; label: string; icon: SidebarIcon; tone: string; exact?: boolean }> = [
     { href: '/', label: '首页', icon: 'home', tone: 'bg-pixel-green', exact: true },
@@ -119,18 +122,19 @@ function TraditionalDesktopSidebar({
   };
 
   return (
-    <aside
-      aria-hidden={!open}
-      className="fixed left-0 top-0 z-[55] hidden h-screen flex-col border-r-4 border-pixel-black bg-pixel-black text-pixel-white transition-[transform,opacity] duration-300 ease-out md:flex"
-      data-traditional-sidebar="true"
-      style={{
-        width,
-        boxShadow: '6px 0 0 #101010',
-        opacity: open ? 1 : 0,
-        pointerEvents: open ? 'auto' : 'none',
-        transform: open ? 'translateX(0)' : `translateX(-${width}px)`,
-      }}
-    >
+    <>
+      <aside
+        aria-hidden={!open}
+        className="fixed left-0 top-0 z-[55] hidden h-screen flex-col border-r-4 border-pixel-black bg-pixel-black text-pixel-white transition-[transform,opacity] duration-300 ease-out md:flex"
+        data-traditional-sidebar="true"
+        style={{
+          width,
+          boxShadow: '6px 0 0 #101010',
+          opacity: open ? 1 : 0,
+          pointerEvents: open ? 'auto' : 'none',
+          transform: open ? 'translateX(0)' : `translateX(-${width}px)`,
+        }}
+      >
           <div className="border-b-4 border-pixel-gray/50 px-4 py-4">
             <div className="flex items-center gap-3">
               <Link href="/" className="flex min-w-0 flex-1 items-center gap-3 no-underline">
@@ -142,6 +146,20 @@ function TraditionalDesktopSidebar({
                   <span className="block truncate font-pixel text-xs leading-none text-pixel-white/65">AGENT TEAM PLATFORM</span>
                 </span>
               </Link>
+              <motion.button
+                type="button"
+                aria-label="收起传统模式侧边栏"
+                title="收起侧边栏"
+                onClick={onToggle}
+                whileHover={{ x: -1 }}
+                whileTap={{ x: -2, scale: 0.96 }}
+                className="flex h-10 w-10 shrink-0 items-center justify-center border-2 border-pixel-white bg-pixel-black text-pixel-white transition-colors hover:border-pixel-yellow hover:text-pixel-yellow"
+                style={{ boxShadow: '2px 2px 0px 0px #101010' }}
+              >
+                <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden="true" shapeRendering="crispEdges">
+                  <path fill="currentColor" d="M14 5 7 12l7 7v-5h7v-4h-7V5Z" />
+                </svg>
+              </motion.button>
             </div>
           </div>
 
@@ -185,7 +203,27 @@ function TraditionalDesktopSidebar({
             onPointerDown={handleResizePointerDown}
             className="absolute right-[-8px] top-0 h-full w-4 cursor-col-resize border-x-2 border-pixel-black bg-pixel-yellow/80 opacity-0 transition-opacity hover:opacity-100"
           />
-    </aside>
+      </aside>
+
+      {!open && (
+        <motion.button
+          type="button"
+          aria-label="展开传统模式侧边栏"
+          title="展开侧边栏"
+          onClick={onToggle}
+          initial={{ x: -8, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          whileHover={{ x: 2 }}
+          whileTap={{ x: 0, scale: 0.96 }}
+          className="fixed left-0 top-[96px] z-[60] hidden h-16 w-9 items-center justify-center border-y-4 border-r-4 border-pixel-black bg-pixel-yellow text-pixel-black transition-colors hover:bg-pixel-green md:flex"
+          style={{ boxShadow: '3px 3px 0px 0px #101010' }}
+        >
+          <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden="true" shapeRendering="crispEdges">
+            <path fill="currentColor" d="M10 5v5H3v4h7v5l7-7-7-7Z" />
+          </svg>
+        </motion.button>
+      )}
+    </>
   );
 }
 
@@ -196,7 +234,7 @@ export function ClientLayout({ children }: ClientLayoutProps) {
   const desktopBridge = useOpenClawDesktopBridge();
   const [isDesktopViewport, setIsDesktopViewport] = useState(false);
   const [homeIntroActive, setHomeIntroActive] = useState(pathname === '/');
-  const [traditionalSidebarOpen, setTraditionalSidebarOpen] = useState(false);
+  const [traditionalSidebarOpen, setTraditionalSidebarOpen] = useState(true);
   const [traditionalSidebarWidth, setTraditionalSidebarWidth] = useState(SIDEBAR_DEFAULT_WIDTH);
   const isDesktopRuntime = Boolean(desktopBridge);
   const isPublicPath = pathname === '/' || pathname.startsWith('/auth/');
@@ -252,6 +290,13 @@ export function ClientLayout({ children }: ClientLayoutProps) {
     if (Number.isFinite(parsedWidth)) {
       setTraditionalSidebarWidth(clampSidebarWidth(parsedWidth));
     }
+
+    const storedOpen = window.localStorage.getItem(SIDEBAR_OPEN_STORAGE_KEY);
+    if (storedOpen === 'closed') {
+      setTraditionalSidebarOpen(false);
+    } else if (storedOpen === 'open') {
+      setTraditionalSidebarOpen(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -259,8 +304,8 @@ export function ClientLayout({ children }: ClientLayoutProps) {
   }, [traditionalSidebarWidth]);
 
   useEffect(() => {
-    setTraditionalSidebarOpen(isTraditionalMode && pathname === '/' && !homeIntroActive);
-  }, [homeIntroActive, isTraditionalMode, pathname]);
+    window.localStorage.setItem(SIDEBAR_OPEN_STORAGE_KEY, traditionalSidebarOpen ? 'open' : 'closed');
+  }, [traditionalSidebarOpen]);
 
   const traditionalShellActive = isTraditionalMode && isDesktopViewport;
   const traditionalSidebarEnabled = traditionalShellActive && !isRouteGuardBlocking && !homeIntroActive;
@@ -274,10 +319,8 @@ export function ClientLayout({ children }: ClientLayoutProps) {
       <div className="hidden md:block">
         <Header
           traditionalMode={isTraditionalMode}
-          traditionalSidebarAvailable={traditionalSidebarEnabled}
           traditionalSidebarOpen={effectiveTraditionalSidebarOpen}
           traditionalSidebarWidth={traditionalSidebarWidth}
-          onTraditionalSidebarToggle={() => setTraditionalSidebarOpen((open) => !open)}
         />
       </div>
       <main data-app-main="true" data-traditional-home={isTraditionalHome ? 'true' : undefined} className={mainClassName}>
@@ -290,6 +333,7 @@ export function ClientLayout({ children }: ClientLayoutProps) {
                   pathname={pathname}
                   width={traditionalSidebarWidth}
                   onWidthChange={setTraditionalSidebarWidth}
+                  onToggle={() => setTraditionalSidebarOpen((open) => !open)}
                 />
               )}
               <div

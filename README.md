@@ -76,8 +76,9 @@ PORT=3002
 WS_PORT=3003
 WORKSPACE_ROOT=/opt/openclaw/data/workspaces
 JWT_SECRET=replace-with-a-long-random-secret
-PUBLIC_BACKEND_URL=https://api.example.com
-CORS_ORIGIN=https://app.example.com
+PUBLIC_BACKEND_URL=http://121.40.242.77
+FEISHU_PUBLIC_BASE_URL=http://121.40.242.77
+CORS_ORIGIN=http://121.40.242.77
 COZE_API_BASE=https://api.coze.com
 COZE_API_TOKEN=
 COZE_MARKET_BOTS=[]
@@ -88,13 +89,14 @@ Notes:
 - `JWT_SECRET` must be changed in production.
 - `WORKSPACE_ROOT` must point to a writable directory on the backend server.
 - `PUBLIC_BACKEND_URL` is the public browser-accessible backend URL.
+- `FEISHU_PUBLIC_BASE_URL` is used when generating Feishu event callback URLs. If `http://121.40.242.77` does not proxy `/api` to the backend, set it to `http://121.40.242.77:3002` instead.
 - `CORS_ORIGIN` must match the frontend origin. Multiple origins can be comma-separated.
 
 ### Frontend: `next-lobster-platform/.env.production`
 
 ```bash
-NEXT_PUBLIC_API_URL=https://api.example.com
-NEXT_PUBLIC_WS_URL=wss://api.example.com/ws
+NEXT_PUBLIC_API_URL=http://121.40.242.77
+NEXT_PUBLIC_WS_URL=ws://121.40.242.77/ws
 BACKEND_INTERNAL_URL=http://127.0.0.1:3002
 ```
 
@@ -224,9 +226,12 @@ server {
 Then set:
 
 ```bash
-PUBLIC_BACKEND_URL=https://api.example.com
-CORS_ORIGIN=https://app.example.com
+PUBLIC_BACKEND_URL=http://121.40.242.77
+FEISHU_PUBLIC_BASE_URL=http://121.40.242.77
+CORS_ORIGIN=http://121.40.242.77
 ```
+
+If you expose backend port `3002` directly instead of proxying `/api` and `/auth` through port `80`, use `http://121.40.242.77:3002` for `PUBLIC_BACKEND_URL`, `FEISHU_PUBLIC_BASE_URL`, and `NEXT_PUBLIC_API_URL`.
 
 ## Deploy Frontend on Alibaba Cloud ECS
 

@@ -161,6 +161,18 @@ sudo systemctl status openclaw-backend
 | `WS_PORT` | `3003` | WebSocket port |
 | `NODE_ENV` | `development` | Environment mode |
 | `CORS_ORIGIN` | `http://localhost:3000` | Allowed CORS origin |
+| `PUBLIC_BACKEND_URL` | `http://localhost:3002` | Public browser-facing backend URL for absolute asset URLs |
+| `FEISHU_PUBLIC_BASE_URL` | `PUBLIC_BACKEND_URL` | Public base URL used to generate Feishu event callback URLs |
+
+For the current IP-based deployment, set:
+
+```bash
+PUBLIC_BACKEND_URL=http://121.40.242.77
+FEISHU_PUBLIC_BASE_URL=http://121.40.242.77
+CORS_ORIGIN=http://121.40.242.77
+```
+
+If port `80` does not proxy `/api` and `/auth` to the backend, use `http://121.40.242.77:3002` for `PUBLIC_BACKEND_URL` and `FEISHU_PUBLIC_BASE_URL`.
 
 ## API Endpoints
 

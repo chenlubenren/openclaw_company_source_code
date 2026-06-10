@@ -49,12 +49,16 @@ function readRegistry(homeDir = os.homedir()) {
   const registry = readJsonFile(registryPath(homeDir), { agents: [] });
   return {
     agents: Array.isArray(registry.agents) ? registry.agents : [],
+    hiddenAgentIds: Array.isArray(registry.hiddenAgentIds)
+      ? registry.hiddenAgentIds.filter((id) => typeof id === 'string')
+      : [],
   };
 }
 
 function writeRegistry(registry, homeDir = os.homedir()) {
   writeJsonFile(registryPath(homeDir), {
     agents: Array.isArray(registry.agents) ? registry.agents : [],
+    hiddenAgentIds: Array.isArray(registry.hiddenAgentIds) ? registry.hiddenAgentIds : [],
   });
 }
 
@@ -80,10 +84,12 @@ function listLocalAgents(options = {}) {
   const homeDir = options.homeDir || os.homedir();
   const scanned = scanLocalAgents({ homeDir });
   const registry = readRegistry(homeDir);
+  const hiddenAgentIds = new Set(registry.hiddenAgentIds);
   const byId = new Map();
 
   for (const candidate of scanned.agents) {
     const record = recordFromCandidate(candidate, { imported: false });
+    if (hiddenAgentIds.has(record.id)) continue;
     byId.set(record.id, record);
   }
 
@@ -91,6 +97,7 @@ function listLocalAgents(options = {}) {
     if (!record.workspacePath || !exists(record.workspacePath)) continue;
     const detected = detectAgentWorkspace(record.workspacePath);
     const id = record.id || agentIdForPath(record.workspacePath);
+    if (hiddenAgentIds.has(id)) continue;
     byId.set(id, {
       ...byId.get(id),
       ...record,
@@ -149,6 +156,7 @@ function importLocalAgent(input = {}, options = {}) {
       record,
       ...registry.agents.filter((agent) => agent.id !== id),
     ],
+    hiddenAgentIds: registry.hiddenAgentIds.filter((hiddenId) => hiddenId !== id),
   }, homeDir);
 
   return {
@@ -160,10 +168,15 @@ function importLocalAgent(input = {}, options = {}) {
 function deleteLocalAgent(agentId, options = {}) {
   const homeDir = options.homeDir || os.homedir();
   const registry = readRegistry(homeDir);
+  const hiddenAgentIds = new Set(registry.hiddenAgentIds);
+  const nextAgents = registry.agents.filter((agent) => agent.id !== agentId);
+  const alreadyHidden = hiddenAgentIds.has(agentId);
+  hiddenAgentIds.add(agentId);
   writeRegistry({
-    agents: registry.agents.filter((agent) => agent.id !== agentId),
+    agents: nextAgents,
+    hiddenAgentIds: Array.from(hiddenAgentIds),
   }, homeDir);
-  return { success: true };
+  return { success: nextAgents.length !== registry.agents.length || !alreadyHidden };
 }
 
 module.exports = {

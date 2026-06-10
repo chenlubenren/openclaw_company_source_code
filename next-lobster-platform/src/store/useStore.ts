@@ -15,7 +15,6 @@ import {
   WhiteboardNote,
 } from '@/types';
 import * as api from '@/lib/api';
-import { API_BASE } from '@/lib/runtime';
 import { getOpenClawDesktop, type DesktopLocalAgent } from '@/lib/desktop';
 import { useAuthStore } from './useAuthStore';
 
@@ -519,17 +518,17 @@ export const useStore = create<LobsterStore>()(
   deleteAgentAPI: async (id) => {
     const desktop = getOpenClawDesktop();
     if (desktop?.deleteLocalAgent) {
-      await desktop.deleteLocalAgent(id);
+      const result = await desktop.deleteLocalAgent(id);
+      if (!result?.success) {
+        throw new Error('删除本地 Agent 失败');
+      }
       set((state) => ({ lobsters: state.lobsters.filter(l => l.id !== id) }));
       return;
     }
-    const token = useAuthStore.getState().token;
-    await fetch(`${API_BASE}/api/agents/${id}`, {
-      method: 'DELETE',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    if (desktop) {
+      throw new Error('当前桌面客户端不支持删除本地 Agent，请更新桌面端或在本地注册表中移除。');
+    }
+    await api.deleteAgent(id);
     set((state) => ({ lobsters: state.lobsters.filter(l => l.id !== id) }));
   },
 

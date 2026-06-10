@@ -272,6 +272,18 @@ export async function updateAgent(agentId: string, updates: Partial<Lobster>): P
   return data.agent;
 }
 
+export async function deleteAgent(agentId: string): Promise<{ success: boolean }> {
+  const res = await fetch(`${API_BASE}/api/agents/${agentId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || '删除 Agent 失败');
+  }
+  return data;
+}
+
 export async function publishAgentToMarket(agentId: string): Promise<{ success: boolean; marketAgentId?: string }> {
   const headers = {
     ...getAuthHeaders(),

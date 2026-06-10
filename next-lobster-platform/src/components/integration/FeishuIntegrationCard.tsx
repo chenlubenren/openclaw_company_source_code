@@ -308,7 +308,7 @@ export function FeishuIntegrationCard({
                         </div>
                         {!info.envStatus.publicBackendConfigured && (
                           <p className="mt-3 font-pixel text-xs leading-relaxed text-pixel-red">
-                            当前地址使用 localhost。飞书云端无法直接访问本机，请通过 HTTPS 内网穿透（如 cloudflared）暴露后端，并在 backend/.env 设置 FEISHU_PUBLIC_BASE_URL。
+                            当前地址使用 localhost。飞书云端无法直接访问本机，请使用公网 IP/域名或临时内网穿透暴露后端，并在 backend/.env 设置 FEISHU_PUBLIC_BASE_URL，例如 http://121.40.242.77。
                           </p>
                         )}
                       </div>

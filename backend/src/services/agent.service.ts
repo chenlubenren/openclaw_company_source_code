@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { eq, and, desc, isNull } from 'drizzle-orm';
-import { getDb } from '../db/index.js';
+import { getDb, getRawDb } from '../db/index.js';
 import {
   userAgentInstances,
   marketAgents,
@@ -38,6 +38,95 @@ function generateId(): string {
   const bytes = new Uint8Array(16);
   crypto.getRandomValues(bytes);
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+function parseStoredJsonArray(value: unknown): string[] {
+  if (typeof value !== 'string') return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === 'string')
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function getAgentRootPath(agent: UserAgentInstance): string {
+  const workspacePath = resolveStoredPath(agent.workspacePath);
+  return path.basename(workspacePath) === 'workspace' ? path.dirname(workspacePath) : workspacePath;
+}
+
+function unlinkAgentFromArchitectureManifest(manifestPath: string, agentId: string): void {
+  const resolvedManifestPath = resolveStoredPath(manifestPath);
+  if (!fs.existsSync(resolvedManifestPath)) return;
+
+  let manifest: unknown;
+  try {
+    manifest = JSON.parse(fs.readFileSync(resolvedManifestPath, 'utf-8'));
+  } catch (error) {
+    console.warn(`Failed to parse architecture manifest while deleting agent ${agentId}:`, error);
+    return;
+  }
+
+  if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) return;
+
+  let changed = false;
+  const clearRecord = (record: Record<string, unknown>) => {
+    for (const key of ['linkedLobsterId', 'agentInstanceId', 'lobsterId']) {
+      if (record[key] === agentId) {
+        delete record[key];
+        changed = true;
+      }
+    }
+
+    const linkedLobster = record.linkedLobster;
+    if (
+      linkedLobster &&
+      typeof linkedLobster === 'object' &&
+      !Array.isArray(linkedLobster) &&
+      (linkedLobster as Record<string, unknown>).id === agentId
+    ) {
+      record.linkedLobster = null;
+      changed = true;
+    }
+  };
+
+  const root = manifest as Record<string, unknown>;
+  for (const key of ['agents', 'nodes']) {
+    const items = root[key];
+    if (!Array.isArray(items)) continue;
+    for (const item of items) {
+      if (!item || typeof item !== 'object' || Array.isArray(item)) continue;
+      const record = item as Record<string, unknown>;
+      clearRecord(record);
+
+      const data = record.data;
+      if (data && typeof data === 'object' && !Array.isArray(data)) {
+        clearRecord(data as Record<string, unknown>);
+      }
+    }
+  }
+
+  const workflowDsl = root.workflowDsl;
+  if (workflowDsl && typeof workflowDsl === 'object' && !Array.isArray(workflowDsl)) {
+    const workflowNodes = (workflowDsl as Record<string, unknown>).nodes;
+    if (Array.isArray(workflowNodes)) {
+      for (const node of workflowNodes) {
+        if (node && typeof node === 'object' && !Array.isArray(node)) {
+          clearRecord(node as Record<string, unknown>);
+        }
+      }
+    }
+  }
+
+  if (!changed) return;
+
+  try {
+    fs.writeFileSync(resolvedManifestPath, JSON.stringify(root, null, 2), 'utf-8');
+  } catch (error) {
+    console.warn(`Failed to update architecture manifest while deleting agent ${agentId}:`, error);
+  }
 }
 
 const PLATFORM_TO_PROVIDER_TYPE: Record<string, string> = {
@@ -313,15 +402,67 @@ export async function moveAgentToCave(
 }
 
 export async function deleteAgent(agentId: string, userId: string): Promise<boolean> {
-  const db = getDb();
   const existing = await getAgentByIdAndUser(agentId, userId);
   if (!existing) return false;
 
-  // Delete workspace directory
-  deleteDirectory(resolveStoredPath(existing.workspacePath));
+  const rawDb = getRawDb();
+  const conversationRows = rawDb
+    .prepare('SELECT id FROM conversations WHERE agent_instance_id = ? AND user_id = ?')
+    .all(agentId, userId) as Array<{ id: string }>;
+  const teamRows = rawDb
+    .prepare('SELECT id, manifest_path AS manifestPath FROM teams WHERE user_id = ?')
+    .all(userId) as Array<{ id: string; manifestPath: string }>;
+  const projectRows = rawDb
+    .prepare('SELECT id, agent_ids AS agentIds FROM projects WHERE user_id = ?')
+    .all(userId) as Array<{ id: string; agentIds: string }>;
+  const now = Date.now();
 
-  // Delete from database
-  db.delete(userAgentInstances).where(eq(userAgentInstances.id, agentId)).run();
+  const deleteAgentTransaction = rawDb.transaction(() => {
+    const deleteMessages = rawDb.prepare('DELETE FROM messages WHERE conversation_id = ?');
+    for (const conversation of conversationRows) {
+      deleteMessages.run(conversation.id);
+    }
+
+    rawDb.prepare('DELETE FROM conversations WHERE agent_instance_id = ? AND user_id = ?').run(agentId, userId);
+    rawDb.prepare("DELETE FROM feishu_integrations WHERE scope = 'agent' AND subject_id = ? AND user_id = ?").run(agentId, userId);
+    rawDb.prepare("DELETE FROM social_likes WHERE user_type = 'agent' AND user_id = ?").run(agentId);
+    rawDb.prepare("DELETE FROM social_follows WHERE follower_type = 'agent' AND follower_id = ?").run(agentId);
+    rawDb.prepare("DELETE FROM social_follows WHERE following_type = 'agent' AND following_id = ?").run(agentId);
+    rawDb.prepare("UPDATE social_posts SET is_deleted = 1, updated_at = ? WHERE author_type = 'agent' AND author_id = ?").run(now, agentId);
+    rawDb.prepare("UPDATE social_comments SET is_deleted = 1, updated_at = ? WHERE author_type = 'agent' AND author_id = ?").run(now, agentId);
+    rawDb.prepare('DELETE FROM team_members WHERE agent_instance_id = ? AND team_id IN (SELECT id FROM teams WHERE user_id = ?)').run(agentId, userId);
+    rawDb.prepare('UPDATE teams SET orchestrator_agent_id = NULL, updated_at = ? WHERE orchestrator_agent_id = ? AND user_id = ?').run(now, agentId, userId);
+    rawDb.prepare(`
+      UPDATE team_run_steps
+      SET agent_instance_id = NULL
+      WHERE agent_instance_id = ?
+        AND run_id IN (
+          SELECT team_run_steps.run_id
+          FROM team_run_steps
+          JOIN team_runs ON team_runs.id = team_run_steps.run_id
+          WHERE team_runs.user_id = ?
+        )
+    `).run(agentId, userId);
+
+    const updateProjectAgents = rawDb.prepare('UPDATE projects SET agent_ids = ?, updated_at = ? WHERE id = ? AND user_id = ?');
+    for (const project of projectRows) {
+      const currentAgentIds = parseStoredJsonArray(project.agentIds);
+      const nextAgentIds = currentAgentIds.filter((id) => id !== agentId);
+      if (nextAgentIds.length !== currentAgentIds.length) {
+        updateProjectAgents.run(JSON.stringify(nextAgentIds), now, project.id, userId);
+      }
+    }
+
+    rawDb.prepare('DELETE FROM user_agent_instances WHERE id = ? AND user_id = ?').run(agentId, userId);
+  });
+
+  deleteAgentTransaction();
+
+  for (const team of teamRows) {
+    unlinkAgentFromArchitectureManifest(team.manifestPath, agentId);
+  }
+
+  deleteDirectory(getAgentRootPath(existing));
   return true;
 }
 

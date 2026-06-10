@@ -940,6 +940,35 @@ function TraditionalActionTile({ action, index }: { action: DesktopActionItem; i
   );
 }
 
+function TraditionalActionGroup({
+  label,
+  actions,
+  startIndex,
+}: {
+  label: string;
+  actions: DesktopActionItem[];
+  startIndex: number;
+}) {
+  return (
+    <section
+      className="relative border-[3px] border-pixel-black bg-pixel-white p-4 pt-7"
+      style={{ boxShadow: '3px 3px 0px 0px #101010' }}
+    >
+      <div
+        className="absolute -top-[18px] left-4 border-[3px] border-pixel-black bg-pixel-yellow px-4 py-1 font-pixel text-sm uppercase leading-none text-pixel-black"
+        style={{ boxShadow: '2px 2px 0px 0px #101010' }}
+      >
+        {label}
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        {actions.map((action, index) => (
+          <TraditionalActionTile key={action.href} action={action} index={startIndex + index} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function TraditionalPanel({
   title,
   actionHref,
@@ -986,6 +1015,8 @@ function TraditionalDesktopHome({
     projectCount: projects.length,
     teamCount,
   });
+  const singleAgentActions = actions.slice(0, 4);
+  const agentTeamActions = actions.slice(4);
   const workingAgents = lobsters.filter((lobster) => lobster.status === 'working' || lobster.status === 'busy').length;
   const todayMessageCount = sessionMessages.filter((message) => {
     const timestamp = new Date(message.timestamp).getTime();
@@ -1018,14 +1049,10 @@ function TraditionalDesktopHome({
             <TraditionalStatCard label="今日协作" value={todayMessageCount || sessions.length} note={todayMessageCount > 0 ? '24 小时内消息' : '茶话会会话'} tone="red" />
           </div>
 
-          <section>
-            <h2 className="mb-3 font-pixel text-lg font-bold text-pixel-black">■ 快捷入口</h2>
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-4">
-              {actions.map((action, index) => (
-                <TraditionalActionTile key={action.href} action={action} index={index} />
-              ))}
-            </div>
-          </section>
+          <div className="grid gap-5 pt-3 xl:grid-cols-2">
+            <TraditionalActionGroup label="Single agent" actions={singleAgentActions} startIndex={0} />
+            <TraditionalActionGroup label="agent team" actions={agentTeamActions} startIndex={singleAgentActions.length} />
+          </div>
 
           <div className="grid gap-5 xl:grid-cols-[minmax(330px,0.72fr)_minmax(0,1.28fr)] 2xl:grid-cols-[minmax(360px,0.68fr)_minmax(0,1.32fr)]">
             <TraditionalPanel title="最近 Agent" actionHref="/my-den" actionLabel="查看全部 →">
