@@ -31,7 +31,7 @@ It mainly serves two kinds of usage:
 
 ## Product Architecture
 
-![ShrimpCrab Product Structure](docs/readme-assets/feishu/product-structure.jpg)
+![ShrimpCrab Product Structure](docs/readme-assets/product-structure.jpg)
 
 The product is built around two core capability lines and three supporting modules:
 
@@ -55,19 +55,19 @@ Together, these five modules form a full path: acquire capability, organize coll
 
 ### Home
 
-![ShrimpCrab Home](docs/readme-assets/feishu/product-home.png)
+![ShrimpCrab Home](docs/readme-assets/product-home.png)
 
 ### Team Canvas
 
-![ShrimpCrab Team Canvas](docs/readme-assets/feishu/product-canvas.png)
+![ShrimpCrab Team Canvas](docs/readme-assets/product-canvas.png)
 
 ### Desktop Client
 
-![ShrimpCrab Desktop Client](docs/readme-assets/feishu/product-desktop.png)
+![ShrimpCrab Desktop Client](docs/readme-assets/product-desktop.png)
 
 ### Local Agent Import
 
-![ShrimpCrab Local Agent Import](docs/readme-assets/feishu/product-local-import.png)
+![ShrimpCrab Local Agent Import](docs/readme-assets/product-local-import.png)
 
 ## Technical Architecture
 
@@ -81,7 +81,7 @@ From an implementation perspective, ShrimpCrab uses a layered collaboration arch
 
 ### Overall System Architecture
 
-![Overall System Architecture](docs/readme-assets/feishu/arch-system.jpg)
+![Overall System Architecture](docs/readme-assets/arch-system.jpg)
 
 ### How Product Modules Map to Technical Layers
 
@@ -93,15 +93,15 @@ From an implementation perspective, ShrimpCrab uses a layered collaboration arch
 
 ### DSL Execution State Machine
 
-![DSL Execution State Machine](docs/readme-assets/feishu/arch-workflow-state.jpg)
+![DSL Execution State Machine](docs/readme-assets/arch-workflow-state.jpg)
 
 ### Realtime Message Flow
 
-![Realtime Message Flow](docs/readme-assets/feishu/arch-message-flow.jpg)
+![Realtime Message Flow](docs/readme-assets/arch-message-flow.jpg)
 
 ### Core ERD
 
-![Core ERD](docs/readme-assets/feishu/arch-erd.jpg)
+![Core ERD](docs/readme-assets/arch-erd.jpg)
 
 ## Tech Stack
 
