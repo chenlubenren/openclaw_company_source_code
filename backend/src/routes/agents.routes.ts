@@ -77,20 +77,6 @@ const TEA_PARTY_BOARD_WIDTH = 1800;
 const TEA_PARTY_NOTE_WIDTH = 220;
 const TEA_PARTY_NOTE_HEIGHT = 148;
 const TEA_PARTY_NOTE_START_Y = 118;
-const TEA_PARTY_RUNTIME_BLOCKED_ENTRIES = [
-  '.claude',
-  '.openclaw',
-  'AGENTS.md',
-  'BOOTSTRAP.md',
-  'HEARTBEAT.md',
-  'IDENTITY.md',
-  'MEMORY.md',
-  'TOOLS.md',
-  'USER.md',
-  'memory',
-  'skills',
-];
-
 type TeaPartyWhiteboardColumn = typeof TEA_PARTY_WHITEBOARD_COLUMNS[number];
 
 interface TeaPartyMemberInput {
@@ -287,11 +273,9 @@ function preferSelectedModel(models: string[], selectedModel?: string): string[]
 
 function prepareTeaPartyRuntimeWorkspace(workspacePath: string, sourceWorkspacePath: string): void {
   fs.mkdirSync(workspacePath, { recursive: true });
-  for (const entry of TEA_PARTY_RUNTIME_BLOCKED_ENTRIES) {
+  for (const entry of fs.readdirSync(workspacePath)) {
     const entryPath = path.join(workspacePath, entry);
-    if (fs.existsSync(entryPath)) {
-      fs.rmSync(entryPath, { recursive: true, force: true });
-    }
+    fs.rmSync(entryPath, { recursive: true, force: true });
   }
 
   const sourceSoulPath = path.join(resolveStoredPath(sourceWorkspacePath), 'SOUL.md');
