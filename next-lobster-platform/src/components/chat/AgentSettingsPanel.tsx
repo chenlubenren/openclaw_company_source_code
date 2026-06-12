@@ -193,6 +193,18 @@ export function AgentSettingsPanel({ agent, token, onClose, onAgentUpdate }: Age
             <span>🔗</span> 供应商
           </h3>
           <div className="bg-pixel-white p-4 border-4 border-pixel-black space-y-2">
+            <div className="mb-3 flex flex-col gap-2 border-b-2 border-pixel-black/20 pb-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="font-pixel text-xs text-pixel-black/55">
+                {providerTypeLabel} 供应商
+              </p>
+              <a
+                href="/settings/providers"
+                target="_blank"
+                className="inline-flex items-center gap-1 font-pixel text-xs text-pixel-blue hover:underline"
+              >
+                <span>→</span> 管理供应商
+              </a>
+            </div>
             {loadingProviders ? (
               <div className="font-pixel text-sm text-pixel-black/50">加载中...</div>
             ) : providers.length === 0 ? (
@@ -301,13 +313,6 @@ export function AgentSettingsPanel({ agent, token, onClose, onAgentUpdate }: Age
           </div>
         )}
 
-        <a
-          href="/settings/providers"
-          target="_blank"
-          className="font-pixel text-xs text-pixel-blue hover:underline flex items-center gap-1 mt-4"
-        >
-          <span>→</span> 管理供应商
-        </a>
       </div>
 
       {/* Footer */}
