@@ -96,6 +96,7 @@ function TraditionalDesktopSidebar({
   projects,
   onWidthChange,
   onToggle,
+  onDeleteProject,
 }: {
   open: boolean;
   pathname: string;
@@ -103,6 +104,7 @@ function TraditionalDesktopSidebar({
   projects: Project[];
   onWidthChange: (width: number) => void;
   onToggle: () => void;
+  onDeleteProject?: (project: Project) => void;
 }) {
   const navItems: Array<{ href: string; label: string; icon: SidebarIcon; tone: string; exact?: boolean }> = [
     { href: '/', label: '首页', icon: 'home', tone: 'bg-pixel-green', exact: true },
@@ -218,15 +220,16 @@ function TraditionalDesktopSidebar({
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.035 * (navItems.length + index) }}
                       >
-                        <Link
-                          href={href}
-                          className={`flex min-h-[48px] items-center gap-2 border-2 px-2 font-pixel text-sm no-underline transition-colors ${
-                            active
-                              ? 'border-pixel-gray bg-pixel-white/15 text-pixel-white'
-                              : 'border-transparent text-pixel-white/65 hover:border-pixel-gray hover:bg-pixel-white/10 hover:text-pixel-white'
-                          }`}
-                          title={project.name}
-                        >
+                        <div className="group/sidebar-project relative">
+                          <Link
+                            href={href}
+                            className={`flex min-h-[48px] items-center gap-2 border-2 px-2 pl-9 font-pixel text-sm no-underline transition-colors ${
+                              active
+                                ? 'border-pixel-gray bg-pixel-white/15 text-pixel-white'
+                                : 'border-transparent text-pixel-white/65 hover:border-pixel-gray hover:bg-pixel-white/10 hover:text-pixel-white'
+                            }`}
+                            title={project.name}
+                          >
                           <span className="flex h-7 w-7 shrink-0 items-center justify-center border-2 border-pixel-black bg-pixel-gray text-pixel-white">
                             <TraditionalSidebarIcon icon="projects" className="h-4 w-4" />
                           </span>
@@ -236,7 +239,24 @@ function TraditionalDesktopSidebar({
                               {project.teamIds.length} 团队 · {(project.agentIds || []).length} Agent
                             </span>
                           </span>
-                        </Link>
+                          </Link>
+                          {onDeleteProject && (
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                onDeleteProject(project);
+                              }}
+                              className="absolute left-1 top-1 flex h-7 w-7 items-center justify-center border-2 border-pixel-black bg-pixel-red font-pixel text-xs font-bold leading-none text-pixel-white opacity-0 transition-opacity hover:brightness-95 group-hover/sidebar-project:opacity-100 group-focus-within/sidebar-project:opacity-100"
+                              style={{ boxShadow: '2px 2px 0 #101010' }}
+                              aria-label={`删除项目 ${project.name}`}
+                              title="删除项目"
+                            >
+                              X
+                            </button>
+                          )}
+                        </div>
                       </motion.div>
                     );
                   })}
@@ -286,6 +306,7 @@ export function ClientLayout({ children }: ClientLayoutProps) {
   const [desktopDisplayMode] = useDesktopDisplayMode();
   const { token, hasHydrated } = useAuthStore();
   const projects = useStore((state) => state.projects);
+  const deleteProjectAPI = useStore((state) => state.deleteProjectAPI);
   const desktopBridge = useOpenClawDesktopBridge();
   const [isDesktopViewport, setIsDesktopViewport] = useState(false);
   const [homeIntroActive, setHomeIntroActive] = useState(pathname === '/');
@@ -409,6 +430,11 @@ export function ClientLayout({ children }: ClientLayoutProps) {
                   projects={projects}
                   onWidthChange={setTraditionalSidebarWidth}
                   onToggle={() => setTraditionalSidebarOpen((open) => !open)}
+                  onDeleteProject={async (project) => {
+                    const ok = window.confirm(`确定删除项目「${project.name}」吗？这会删除项目配置和工作空间。`);
+                    if (!ok) return;
+                    await deleteProjectAPI(project.id);
+                  }}
                 />
               )}
               <div

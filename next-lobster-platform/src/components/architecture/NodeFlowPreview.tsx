@@ -158,18 +158,16 @@ function PreviewAgentNode({
         conversations: [],
       } as Lobster
     : null;
-  const kind = typeof data.workflowKind === 'string'
-    ? data.workflowKind
-    : typeof data.kind === 'string'
-      ? data.kind
-      : undefined;
+
   return (
     <motion.div
       animate={isRunning ? { y: [0, -3, 0] } : { y: 0 }}
       transition={isRunning ? { duration: 1, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.15 }}
-      className={`relative px-4 py-3 min-w-[190px] border-4 border-pixel-black ${
-        data.isManager ? 'bg-pixel-blue' : 'bg-pixel-green'
-      } ${workflowFrameClass(status, selected)}`}
+      className={[
+        'relative min-w-[210px] max-w-[260px] border-4 border-pixel-black px-3 py-2',
+        data.isManager ? 'bg-pixel-blue' : 'bg-pixel-green',
+        workflowFrameClass(status, selected),
+      ].join(' ')}
       style={{ boxShadow: selected || status ? '6px 6px 0px 0px #101010' : '4px 4px 0px 0px #101010' }}
     >
       {isRunning && (
@@ -179,44 +177,29 @@ function PreviewAgentNode({
           transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
         />
       )}
-      {/* Left handle (input) */}
       <Handle
         type="target"
         position={Position.Left}
         style={{ background: '#3b82f6', border: '3px solid #101010', width: 12, height: 12 }}
       />
-      {/* Right handle (output) */}
       <Handle
         type="source"
         position={Position.Right}
         style={{ background: '#22c55e', border: '3px solid #101010', width: 12, height: 12 }}
       />
-      <div className="flex flex-col items-center gap-2">
+      {status && (
+        <span className={[
+          'absolute -top-8 left-1/2 -translate-x-1/2 border-2 border-pixel-black px-2 py-0.5 font-pixel text-[10px]',
+          workflowStatusClass(status),
+        ].join(' ')}>
+          {workflowStatusLabel(status)}
+        </span>
+      )}
+      <div className="flex items-center gap-3">
         <AgentNodeAvatar lobster={nodeLobster} size="sm" />
-        {data.isManager && (
-          <span className="bg-pixel-red text-pixel-white px-2 py-0.5 font-pixel text-xs">管理员</span>
-        )}
-        <span className="font-pixel text-base text-pixel-white font-bold text-center">
+        <span className="min-w-0 flex-1 truncate text-left font-pixel text-base font-bold leading-tight text-pixel-white">
           {title}
         </span>
-        <span className="font-pixel text-xs text-pixel-white/70 text-center">
-          {data.role || '未设置角色'}
-        </span>
-        {kind && (
-          <span className="px-2 py-0.5 border-2 border-pixel-black bg-pixel-white text-pixel-black font-pixel text-[10px]">
-            {kind}
-          </span>
-        )}
-        {status && (
-          <span className={`mt-1 px-2 py-0.5 border-2 border-pixel-black font-pixel text-[10px] ${workflowStatusClass(status)}`}>
-            {workflowStatusLabel(status)}
-          </span>
-        )}
-        {isRunning && data.workflowTask && (
-          <span className="max-w-[150px] truncate font-pixel text-[10px] text-pixel-white/90 text-center">
-            {shortPreviewText(data.workflowTask)}
-          </span>
-        )}
       </div>
     </motion.div>
   );
@@ -316,11 +299,47 @@ function PreviewStartNode({ data }: { data: PreviewNodeData }) {
   );
 }
 
+
+function PreviewEndNode({ data }: { data: PreviewNodeData }) {
+  const status = data.workflowStatus;
+  return (
+    <div
+      className={[
+        'relative px-4 py-3 min-w-[120px] border-4 border-pixel-black bg-pixel-black',
+        workflowFrameClass(status),
+      ].join(' ')}
+      style={{ boxShadow: status ? '6px 6px 0px 0px #101010' : '4px 4px 0px 0px #101010', borderRadius: '999px' }}
+    >
+      {status && (
+        <span className={[
+          'absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-0.5 border-2 border-pixel-black font-pixel text-[10px]',
+          workflowStatusClass(status),
+        ].join(' ')}>
+          {workflowStatusLabel(status)}
+        </span>
+      )}
+      <Handle
+        type="target"
+        position={Position.Left}
+        style={{ background: '#ef4444', border: '3px solid #fff', width: 12, height: 12 }}
+      />
+      <div className="flex flex-col items-center gap-1">
+        <span className="bg-pixel-red text-pixel-white px-2 py-0.5 font-pixel text-xs">END</span>
+        <span className="font-pixel text-base text-pixel-white font-bold text-center">
+          {data.label || 'Output'}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // nodeTypes for ReactFlow
 const nodeTypes = {
   agentNode: PreviewAgentNode,
   conditionNode: PreviewConditionNode,
   startNode: PreviewStartNode,
+  endNode: PreviewEndNode,
+  end: PreviewEndNode,
 };
 
 // ─── DataFlow Edge for Preview ─────────────────────────────────────────────────

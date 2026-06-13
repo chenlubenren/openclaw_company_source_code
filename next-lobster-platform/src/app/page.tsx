@@ -138,18 +138,44 @@ function MobileLinkRow({
   );
 }
 
-function MobileProjectRow({ project, displayMode }: { project: Project; displayMode: MobileDisplayMode }) {
+function MobileProjectRow({
+  project,
+  displayMode,
+  onDelete,
+}: {
+  project: Project;
+  displayMode: MobileDisplayMode;
+  onDelete?: (project: Project) => void;
+}) {
   const careMode = displayMode === 'care';
   return (
-    <MobileLinkRow
-      href={`/projects?project=${encodeURIComponent(project.id)}`}
-      title={project.name}
-      description={project.description || projectSubtitle(project)}
-      badge={project.ganttEnabled ? 'GANTT' : project.teamIds.length ? `${project.teamIds.length}` : undefined}
-      icon={<FolderIcon src={project.icon} className={careMode ? 'h-14 w-14' : 'h-8 w-8'} />}
-      accent="bg-pixel-blue"
-      displayMode={displayMode}
-    />
+    <div className="group/project-row relative">
+      <MobileLinkRow
+        href={`/projects?project=${encodeURIComponent(project.id)}`}
+        title={project.name}
+        description={project.description || projectSubtitle(project)}
+        badge={project.ganttEnabled ? 'GANTT' : project.teamIds.length ? `${project.teamIds.length}` : undefined}
+        icon={<FolderIcon src={project.icon} className={careMode ? 'h-14 w-14' : 'h-8 w-8'} />}
+        accent="bg-pixel-blue"
+        displayMode={displayMode}
+      />
+      {onDelete && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onDelete(project);
+          }}
+          className={`absolute left-2 top-2 z-10 flex items-center justify-center border-2 border-pixel-black bg-pixel-red font-pixel font-bold leading-none text-pixel-white opacity-0 transition-opacity hover:brightness-95 group-hover/project-row:opacity-100 group-focus-within/project-row:opacity-100 ${careMode ? 'h-10 w-10 text-lg' : 'h-7 w-7 text-sm'}`}
+          style={{ boxShadow: '2px 2px 0 #101010' }}
+          aria-label={`删除项目 ${project.name}`}
+          title="删除项目"
+        >
+          X
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -516,6 +542,7 @@ function MobileHome({
   sessionMessages,
   teamCount,
   isLoggedIn,
+  onDeleteProject,
 }: {
   lobsters: Lobster[];
   projects: Project[];
@@ -523,6 +550,7 @@ function MobileHome({
   sessionMessages: SessionMessage[];
   teamCount: number;
   isLoggedIn: boolean;
+  onDeleteProject?: (project: Project) => void;
 }) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -591,7 +619,14 @@ function MobileHome({
                 <Link href="/projects" className={`border-2 border-pixel-black bg-pixel-white font-pixel leading-none text-pixel-black ${careMode ? 'px-3 py-1.5 text-xl' : 'px-2 py-1 text-xs'}`}>管理</Link>
               </div>
               {recentProjects.length > 0 ? (
-                recentProjects.map((project) => <MobileProjectRow key={project.id} project={project} displayMode={displayMode} />)
+                recentProjects.map((project) => (
+                  <MobileProjectRow
+                    key={project.id}
+                    project={project}
+                    displayMode={displayMode}
+                    onDelete={onDeleteProject}
+                  />
+                ))
               ) : (
                 <MobileLinkRow
                   href="/projects"
@@ -716,15 +751,39 @@ function MobileHome({
   );
 }
 
-function ProjectCard({ project, index }: { project: Project; index: number }) {
+function ProjectCard({
+  project,
+  index,
+  onDelete,
+}: {
+  project: Project;
+  index: number;
+  onDelete?: (project: Project) => void;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.06 }}
-      className="min-h-[148px] border-4 border-pixel-black bg-pixel-white p-3"
+      className="group/project-card relative min-h-[148px] border-4 border-pixel-black bg-pixel-white p-3"
       style={{ boxShadow: '4px 4px 0px 0px #101010' }}
     >
+      {onDelete && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onDelete(project);
+          }}
+          className="absolute left-2 top-2 z-10 flex h-8 w-8 items-center justify-center border-2 border-pixel-black bg-pixel-red font-pixel text-base font-bold leading-none text-pixel-white opacity-0 transition-opacity hover:brightness-95 group-hover/project-card:opacity-100 group-focus-within/project-card:opacity-100"
+          style={{ boxShadow: '2px 2px 0 #101010' }}
+          aria-label={`删除项目 ${project.name}`}
+          title="删除项目"
+        >
+          X
+        </button>
+      )}
       <div className="flex h-full flex-col justify-between">
         <div className="flex items-start gap-3">
           <FolderIcon src={project.icon} className="h-12 w-12 shrink-0" />
@@ -769,6 +828,7 @@ interface TraditionalDesktopHomeProps {
   isLocalMode: boolean;
   hasSeenHero: boolean;
   deleteAgentAPI: (id: string) => Promise<void> | void;
+  deleteProjectAPI: (id: string) => Promise<void> | void;
   onConfigAgent: (agent: Lobster) => void;
   onChanged: () => Promise<void> | void;
 }
@@ -1058,6 +1118,7 @@ function TraditionalDesktopHome({
   isLocalMode,
   hasSeenHero,
   deleteAgentAPI,
+  deleteProjectAPI,
   onConfigAgent,
   onChanged,
 }: TraditionalDesktopHomeProps) {
@@ -1130,7 +1191,17 @@ function TraditionalDesktopHome({
               {recentProjects.length > 0 ? (
                 <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
                   {recentProjects.slice(0, 4).map((project, index) => (
-                    <ProjectCard key={project.id} project={project} index={index} />
+                    <ProjectCard
+                      key={project.id}
+                      project={project}
+                      index={index}
+                      onDelete={async (target) => {
+                        const ok = window.confirm(`确定删除项目「${target.name}」吗？这会删除项目配置和工作空间。`);
+                        if (!ok) return;
+                        await deleteProjectAPI(target.id);
+                        await onChanged();
+                      }}
+                    />
                   ))}
                 </div>
               ) : (
@@ -1155,7 +1226,7 @@ export default function HomePage() {
 }
 
 function HomePageInner() {
-  const { lobsters, architectures, projects, sessions, sessionMessages, isInitialized, isLoading, initialize, deleteAgentAPI } = useStore();
+  const { lobsters, architectures, projects, sessions, sessionMessages, isInitialized, isLoading, initialize, deleteAgentAPI, deleteProjectAPI } = useStore();
   const { token, user } = useAuthStore();
   const desktopBridge = useOpenClawDesktopBridge();
   const isLocalMode = Boolean(desktopBridge);
@@ -1170,6 +1241,12 @@ function HomePageInner() {
       void initialize();
     }
   }, [isLoggedIn, isLocalMode, user, initialize]);
+
+  const handleDeleteProject = async (project: Project) => {
+    const ok = window.confirm(`确定删除项目「${project.name}」吗？这会删除项目配置和工作空间。`);
+    if (!ok) return;
+    await deleteProjectAPI(project.id);
+  };
 
   useEffect(() => {
     const isDesktop = window.matchMedia('(min-width: 768px)').matches;
@@ -1209,6 +1286,7 @@ function HomePageInner() {
         sessionMessages={sessionMessages}
         teamCount={teamCount}
         isLoggedIn={isLoggedIn}
+        onDeleteProject={handleDeleteProject}
       />
 
       <OfficialAdoptPrompt
@@ -1233,6 +1311,7 @@ function HomePageInner() {
             isLocalMode={isLocalMode}
             hasSeenHero={hasSeenHero}
             deleteAgentAPI={deleteAgentAPI}
+            deleteProjectAPI={deleteProjectAPI}
             onConfigAgent={setConfigAgent}
             onChanged={initialize}
           />
@@ -1394,7 +1473,7 @@ function HomePageInner() {
                   {recentProjects.length > 0 ? (
                     <div className="grid grid-cols-2 gap-3">
                       {recentProjects.map((project, index) => (
-                        <ProjectCard key={project.id} project={project} index={index} />
+                        <ProjectCard key={project.id} project={project} index={index} onDelete={handleDeleteProject} />
                       ))}
                     </div>
                   ) : (
