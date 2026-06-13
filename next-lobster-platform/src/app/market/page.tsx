@@ -6,7 +6,14 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { BackButton } from '@/components/ui/BackButton';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useStore } from '@/store/useStore';
-import { adoptOfficialLobster, fetchTeamTemplates, adoptTeamTemplate } from '@/lib/api';
+import {
+  adoptOfficialLobster,
+  fetchTeamTemplates,
+  adoptTeamTemplate,
+  fetchTeamTemplateDuplicates,
+  type TeamTemplateDuplicateAgent,
+  type TeamTemplateDuplicateChoice,
+} from '@/lib/api';
 import { API_BASE } from '@/lib/runtime';
 import { NodeFlowPreview } from '@/components/architecture/NodeFlowPreview';
 import type { Architecture, ArchitectureEdge, ArchitectureNode, WorkflowDsl } from '@/types';
@@ -819,13 +826,42 @@ function TeamAdoptModal({
   const [teamName, setTeamName] = useState(template.name);
   const [adopting, setAdopting] = useState(false);
   const [error, setError] = useState('');
+  const [duplicates, setDuplicates] = useState<TeamTemplateDuplicateAgent[]>([]);
+  const [duplicateChoices, setDuplicateChoices] = useState<Record<string, 'clone' | 'share-config'>>({});
+  const [checkingDuplicates, setCheckingDuplicates] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setCheckingDuplicates(true);
+    setError('');
+    fetchTeamTemplateDuplicates(template.id)
+      .then((items) => {
+        if (cancelled) return;
+        setDuplicates(items);
+        setDuplicateChoices(Object.fromEntries(items.map((item) => [item.roleCode, 'clone'])));
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : '检查重复 Agent 失败');
+      })
+      .finally(() => {
+        if (!cancelled) setCheckingDuplicates(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [template.id]);
 
   const handleAdopt = async () => {
     if (adopting) return;
     setAdopting(true);
     setError('');
     try {
-      await adoptTeamTemplate(template.id, teamName.trim() || undefined);
+      const choices: TeamTemplateDuplicateChoice[] = duplicates.map((item) => ({
+        roleCode: item.roleCode,
+        existingAgentId: item.existingAgentId,
+        mode: duplicateChoices[item.roleCode] || 'clone',
+      }));
+      await adoptTeamTemplate(template.id, teamName.trim() || undefined, choices);
       await initialize();
       onClose();
       router.push('/my-den');
@@ -891,6 +927,55 @@ function TeamAdoptModal({
               <li>✓ 一个团队架构（协作图）</li>
             </ul>
           </div>
+
+          {checkingDuplicates && (
+            <div className="border-[2px] border-pixel-black/20 p-3 font-pixel text-xs text-pixel-black/50">
+              正在检查重复 Agent...
+            </div>
+          )}
+
+          {!checkingDuplicates && duplicates.length > 0 && (
+            <div className="border-[3px] border-pixel-black bg-[#fff7d6] p-3 space-y-3">
+              <p className="font-pixel text-xs font-bold text-pixel-black">
+                检测到你已经拥有同模板 Agent，请选择处理方式：
+              </p>
+              {duplicates.map((item) => (
+                <div key={`${item.roleCode}-${item.existingAgentId}`} className="border-2 border-pixel-black bg-pixel-white p-2">
+                  <p className="mb-2 font-pixel text-xs font-bold text-pixel-black">
+                    {item.templateName}：已有「{item.existingAgentName}」
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <label className="flex cursor-pointer items-start gap-2 border-2 border-pixel-black bg-pixel-white p-2 hover:bg-pixel-yellow/40">
+                      <input
+                        type="radio"
+                        name={`duplicate-${item.roleCode}`}
+                        checked={(duplicateChoices[item.roleCode] || 'clone') === 'clone'}
+                        onChange={() => setDuplicateChoices((current) => ({ ...current, [item.roleCode]: 'clone' }))}
+                        className="mt-0.5"
+                      />
+                      <span>
+                        <span className="block font-pixel text-xs font-bold text-pixel-black">克隆新 Agent</span>
+                        <span className="block font-pixel text-[10px] leading-snug text-pixel-black/50">创建独立配置。</span>
+                      </span>
+                    </label>
+                    <label className="flex cursor-pointer items-start gap-2 border-2 border-pixel-black bg-pixel-white p-2 hover:bg-pixel-yellow/40">
+                      <input
+                        type="radio"
+                        name={`duplicate-${item.roleCode}`}
+                        checked={duplicateChoices[item.roleCode] === 'share-config'}
+                        onChange={() => setDuplicateChoices((current) => ({ ...current, [item.roleCode]: 'share-config' }))}
+                        className="mt-0.5"
+                      />
+                      <span>
+                        <span className="block font-pixel text-xs font-bold text-pixel-black">共用配置</span>
+                        <span className="block font-pixel text-[10px] leading-snug text-pixel-black/50">新团队复制现有供应商/模型配置。</span>
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div>
             <p className="font-pixel text-xs font-bold text-pixel-black/60 mb-2">团队成员预览：</p>

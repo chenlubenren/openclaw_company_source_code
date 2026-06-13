@@ -1,7 +1,16 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { createAgent, createCave, moveAgentToCave, type CreateAgentDto } from './agent.service.js';
+import {
+  createAgent,
+  createCave,
+  getUserAgents,
+  moveAgentToCave,
+  readAgentUserConfig,
+  updateAgentConfig,
+  type CreateAgentDto,
+} from './agent.service.js';
+import type { UserAgentInstance } from '../db/schema.js';
 import { createArchitecture } from './architecture.service.js';
 import { resolveStoredPath } from './workspace.service.js';
 import type { WorkflowAgentKind, WorkflowDsl } from './workflow-executor.service.js';
@@ -107,6 +116,21 @@ export interface AdoptTeamResult {
   teamId?: string;
   agentIds?: string[];
   error?: string;
+}
+
+export type DuplicateAgentMode = 'clone' | 'share-config';
+
+export interface DuplicateAgentChoice {
+  roleCode: string;
+  existingAgentId: string;
+  mode: DuplicateAgentMode;
+}
+
+export interface DuplicateTeamAgent {
+  roleCode: string;
+  templateName: string;
+  existingAgentId: string;
+  existingAgentName: string;
 }
 
 // ==================== Template Data ====================
@@ -407,6 +431,52 @@ function withTemplateGraph(template: TeamTemplate): TeamTemplateWithGraph {
   };
 }
 
+function readTemplateAgentManifest(agent: UserAgentInstance): { templateId?: string; roleCode?: string } {
+  try {
+    const parsed = JSON.parse(agent.manifest || '{}');
+    return {
+      templateId: typeof parsed.templateId === 'string' ? parsed.templateId : undefined,
+      roleCode: typeof parsed.roleCode === 'string' ? parsed.roleCode : undefined,
+    };
+  } catch {
+    return {};
+  }
+}
+
+function makeDuplicateChoiceKey(roleCode: string, existingAgentId: string): string {
+  return `${roleCode}::${existingAgentId}`;
+}
+
+export async function findDuplicateTeamAgents(
+  userId: string,
+  templateId: string
+): Promise<DuplicateTeamAgent[]> {
+  const template = getTeamTemplateById(templateId);
+  if (!template) return [];
+
+  const roleNames = new Map(template.members.map((member) => [member.roleCode, member.name]));
+  const agents = await getUserAgents(userId);
+  const byRole = new Map<string, DuplicateTeamAgent>();
+
+  for (const agent of agents) {
+    const manifest = readTemplateAgentManifest(agent);
+    if (manifest.templateId !== template.id || !manifest.roleCode || !roleNames.has(manifest.roleCode)) {
+      continue;
+    }
+
+    if (!byRole.has(manifest.roleCode)) {
+      byRole.set(manifest.roleCode, {
+        roleCode: manifest.roleCode,
+        templateName: roleNames.get(manifest.roleCode) || manifest.roleCode,
+        existingAgentId: agent.id,
+        existingAgentName: agent.name,
+      });
+    }
+  }
+
+  return Array.from(byRole.values());
+}
+
 // ==================== Public API ====================
 
 export function listTeamTemplates(): TeamTemplateWithGraph[] {
@@ -421,7 +491,8 @@ export function getTeamTemplateById(id: string): TeamTemplateWithGraph | null {
 export async function adoptTeamTemplate(
   userId: string,
   templateId: string,
-  teamName?: string
+  teamName?: string,
+  duplicateChoices: DuplicateAgentChoice[] = []
 ): Promise<AdoptTeamResult> {
   const template = getTeamTemplateById(templateId);
   if (!template) {
@@ -434,10 +505,23 @@ export async function adoptTeamTemplate(
     // 1. Create a Cave (Agent窝) for this team
     const cave = await createCave(userId, finalTeamName, template.color);
 
+    const duplicateChoiceMap = new Map(
+      duplicateChoices.map((choice) => [makeDuplicateChoiceKey(choice.roleCode, choice.existingAgentId), choice])
+    );
+    const existingAgents = await getUserAgents(userId);
+    const existingAgentMap = new Map(existingAgents.map((agent) => [agent.id, agent]));
+
     // 2. Create each agent and assign to the cave
     const agentIds: string[] = [];
 
     for (const member of template.members) {
+      const matchingChoice = duplicateChoices.find((choice) =>
+        choice.roleCode === member.roleCode &&
+        choice.mode === 'share-config' &&
+        duplicateChoiceMap.has(makeDuplicateChoiceKey(choice.roleCode, choice.existingAgentId))
+      );
+      const sharedAgent = matchingChoice ? existingAgentMap.get(matchingChoice.existingAgentId) : undefined;
+      const sharedConfig = sharedAgent ? readAgentUserConfig(sharedAgent) : undefined;
       const memberPlatform = member.platform ?? template.platform;
       const memberAvatar = member.avatar ?? template.avatar;
       const agentDto: CreateAgentDto = {
@@ -460,6 +544,16 @@ export async function adoptTeamTemplate(
       const agent = await createAgent(userId, agentDto);
       agentIds.push(agent.id);
 
+      if (sharedAgent && sharedConfig) {
+        const sharedProviderId = sharedConfig.providerId ?? sharedAgent.providerId ?? null;
+        await updateAgentConfig(agent.id, userId, {
+          providerId: sharedProviderId,
+          model: sharedConfig.model,
+          temperature: sharedConfig.temperature,
+          maxTokens: sharedConfig.maxTokens,
+        });
+      }
+
       // Assign agent to cave
       await moveAgentToCave(agent.id, userId, cave.id);
 
@@ -473,6 +567,7 @@ export async function adoptTeamTemplate(
           cfgPath,
           JSON.stringify(
             {
+              ...(sharedConfig ?? {}),
               agentId: agent.id,
               name: agent.name,
               description: member.description,

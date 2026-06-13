@@ -495,7 +495,7 @@ export async function updateAgentConfig(
     throw new AgentProfileLockedError();
   }
 
-  const platform = config.platform || previousConfig.platform || getPlatformFromManifest(existing.manifest) || 'openclaw';
+  const platform = previousConfig.platform || getPlatformFromManifest(existing.manifest) || 'openclaw';
   const targetProviderId =
     config.providerId !== undefined
       ? config.providerId

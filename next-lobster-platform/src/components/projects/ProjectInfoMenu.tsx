@@ -5,16 +5,36 @@ import type { Project } from '@/types';
 interface ProjectInfoMenuProps {
   project: Project;
   revealOnHover?: boolean;
+  onDelete?: (project: Project) => void;
 }
 
-export function ProjectInfoMenu({ project, revealOnHover = false }: ProjectInfoMenuProps) {
+export function ProjectInfoMenu({ project, revealOnHover = false, onDelete }: ProjectInfoMenuProps) {
   const intro = project.description?.trim() || project.notes?.trim() || '暂无简介';
   const workspacePath = formatProjectWorkspacePath(project.workspacePath);
+  const revealClass = revealOnHover
+    ? 'opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100'
+    : '';
+
+  if (onDelete) {
+    return (
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          onDelete(project);
+        }}
+        className={`flex h-8 w-8 items-center justify-center border-2 border-pixel-black bg-pixel-red font-pixel text-base font-bold leading-none text-pixel-white hover:brightness-95 ${revealClass}`}
+        style={{ boxShadow: '2px 2px 0 #101010' }}
+        title="删除项目"
+        aria-label={`删除项目 ${project.name}`}
+      >
+        X
+      </button>
+    );
+  }
 
   return (
-    <details
-      className={`relative inline-block shrink-0 text-left ${revealOnHover ? 'opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100' : ''}`}
-    >
+    <details className={`relative inline-block shrink-0 text-left ${revealClass}`}>
       <summary
         className="flex h-7 w-8 cursor-pointer list-none items-center justify-center border-2 border-pixel-black bg-pixel-white font-pixel text-sm leading-none text-pixel-black hover:bg-pixel-yellow"
         title="查看项目详情"
@@ -28,7 +48,7 @@ export function ProjectInfoMenu({ project, revealOnHover = false }: ProjectInfoM
       >
         <ProjectInfoRow label="项目名称" value={project.name} />
         <ProjectInfoRow label="项目简介" value={intro} multiline />
-        <ProjectInfoRow label="工作路径（以当前用户的文件夹为起点）" value={workspacePath} monospace multiline />
+        <ProjectInfoRow label="工作路径" value={workspacePath} monospace multiline />
       </div>
     </details>
   );

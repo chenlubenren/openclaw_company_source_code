@@ -264,9 +264,34 @@ export async function fetchTeamTemplates(): Promise<any[]> {
   return data.templates || [];
 }
 
+export interface TeamTemplateDuplicateAgent {
+  roleCode: string;
+  templateName: string;
+  existingAgentId: string;
+  existingAgentName: string;
+}
+
+export interface TeamTemplateDuplicateChoice {
+  roleCode: string;
+  existingAgentId: string;
+  mode: 'clone' | 'share-config';
+}
+
+export async function fetchTeamTemplateDuplicates(templateId: string): Promise<TeamTemplateDuplicateAgent[]> {
+  const res = await fetch(`${API_BASE}/api/market/team-templates/${templateId}/duplicates`, {
+    headers: getAuthHeaders(),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || '检查重复 Agent 失败');
+  }
+  return data.duplicates || [];
+}
+
 export async function adoptTeamTemplate(
   templateId: string,
-  teamName?: string
+  teamName?: string,
+  duplicateChoices?: TeamTemplateDuplicateChoice[]
 ): Promise<{ success: boolean; caveId?: string; caveName?: string; teamId?: string; agentIds?: string[]; message?: string }> {
   const headers = {
     ...getAuthHeaders(),
@@ -275,7 +300,7 @@ export async function adoptTeamTemplate(
   const res = await fetch(`${API_BASE}/api/market/team-templates/${templateId}/adopt`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ teamName }),
+    body: JSON.stringify({ teamName, duplicateChoices }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {

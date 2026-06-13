@@ -335,6 +335,7 @@ function ProjectsPageInner() {
     fetchAgents,
     fetchProjects,
     createProjectAPI,
+    deleteProjectAPI,
   } = useStore();
   const [form, setForm] = useState<ProjectInput>(() => emptyForm());
   const [isEditorOpen, setIsEditorOpen] = useState(false);
@@ -409,6 +410,16 @@ function ProjectsPageInner() {
       setMessage(error instanceof Error ? error.message : '保存项目失败');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDeleteProject = async (project: Project) => {
+    const ok = window.confirm(`确定删除项目「${project.name}」吗？这会删除项目配置和工作空间。`);
+    if (!ok) return;
+    try {
+      await deleteProjectAPI(project.id);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '删除项目失败');
     }
   };
 
@@ -497,7 +508,7 @@ function ProjectsPageInner() {
                     </div>
                   </button>
                   <div className="absolute right-2 top-2">
-                    <ProjectInfoMenu project={project} revealOnHover />
+                    <ProjectInfoMenu project={project} revealOnHover onDelete={handleDeleteProject} />
                   </div>
                 </article>
               ))}

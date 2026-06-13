@@ -17,6 +17,7 @@ import {
 } from '../services/coze-market.service.js';
 import {
   adoptTeamTemplate,
+  findDuplicateTeamAgents,
   getTeamTemplateById,
   listTeamTemplates,
 } from '../services/team-template.service.js';
@@ -164,14 +165,28 @@ router.post('/coze/:botId/deploy', async (req: AuthenticatedRequest, res: Respon
   }
 });
 
+// GET /api/market/team-templates/:id/duplicates - Find existing agents from this template
+router.get('/team-templates/:id/duplicates', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+    const id = firstParam(req.params.id);
+    const duplicates = await findDuplicateTeamAgents(userId, id);
+    res.json({ duplicates });
+  } catch (error) {
+    console.error('Find team template duplicates error:', error);
+    res.status(500).json({ message: '检查重复 Agent 失败' });
+  }
+});
+
 // POST /api/market/team-templates/:id/adopt - Adopt a team template
 router.post('/team-templates/:id/adopt', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user!.userId;
     const id = firstParam(req.params.id);
     const teamName = typeof req.body?.teamName === 'string' ? req.body.teamName.trim() : undefined;
+    const duplicateChoices = Array.isArray(req.body?.duplicateChoices) ? req.body.duplicateChoices : [];
 
-    const result = await adoptTeamTemplate(userId, id, teamName);
+    const result = await adoptTeamTemplate(userId, id, teamName, duplicateChoices);
     if (!result.success) {
       res.status(400).json({ message: result.error || '领养团队失败' });
       return;

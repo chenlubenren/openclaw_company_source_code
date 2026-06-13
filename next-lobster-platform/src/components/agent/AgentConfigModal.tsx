@@ -100,13 +100,16 @@ export function AgentConfigModal({ agent, onClose, onSave }: AgentConfigModalPro
 
   const selectedProvider = providers.find(p => p.id === config.providerId);
   const availableModels = selectedProvider?.models || [];
+  const platformLabel = PLATFORMS.find((p) => p.value === config.platform)?.label || config.platform || 'OpenClaw';
 
   const handleSave = async () => {
     if (!token) return;
     setSaving(true);
     setError('');
     try {
-      const payload = canEditProfile ? config : { ...config, name: undefined, description: undefined };
+      const payload = canEditProfile
+        ? { ...config, platform: undefined }
+        : { ...config, name: undefined, description: undefined, platform: undefined };
       const res = await fetch(`${API_BASE}/api/agents/${agent.id}/config`, {
         method: 'PATCH',
         headers: {
@@ -244,12 +247,16 @@ export function AgentConfigModal({ agent, onClose, onSave }: AgentConfigModalPro
                 <select
                   value={config.platform}
                   onChange={(e) => setConfig({ ...config, platform: e.target.value, providerId: '', model: '' })}
-                  className="w-full px-4 py-2 border-4 border-pixel-black font-pixel bg-pixel-white"
+                  disabled
+                  className="w-full px-4 py-2 border-4 border-pixel-black font-pixel bg-pixel-black/5 text-pixel-black disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {PLATFORMS.map((p) => (
                     <option key={p.value} value={p.value}>{p.label}</option>
                   ))}
                 </select>
+                <p className="mt-2 font-pixel text-xs text-pixel-black/50">
+                  Agent 类型由创建或上传时确定，不能在配置中修改。
+                </p>
               </div>
             </div>
 

@@ -1159,7 +1159,7 @@ function TeamManagementCard({
                           className="w-full px-3 py-2 text-left font-pixel text-xs text-pixel-black hover:bg-pixel-yellow"
                           onClick={() => openAgentConfig(agent)}
                         >
-                          配置 Agent / 供应商
+                          配置 Agent
                         </button>
                         <Link
                           href={`/agent/${agent.id}`}
