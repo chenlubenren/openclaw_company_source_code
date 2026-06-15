@@ -169,7 +169,7 @@ export function ProviderModal({ onClose, onSaved, editProvider }: ProviderModalP
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[120] flex items-center justify-center bg-pixel-black/50 p-4"
+        className="fixed inset-0 z-[200] flex items-center justify-center bg-pixel-black/50 p-4"
         onClick={onClose}
       >
         <motion.div
@@ -471,7 +471,7 @@ export function ProviderListModal({ onClose }: ProviderListModalProps) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[120] flex items-center justify-center bg-pixel-black/50 p-4"
+        className="fixed inset-0 z-[200] flex items-center justify-center bg-pixel-black/50 p-4"
         onClick={onClose}
       >
         <motion.div
@@ -558,7 +558,7 @@ export function ProviderListModal({ onClose }: ProviderListModalProps) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[130] flex items-center justify-center bg-pixel-black/50 p-4"
+          className="fixed inset-0 z-[210] flex items-center justify-center bg-pixel-black/50 p-4"
           onClick={() => setCopyProvider(null)}
         >
           <motion.div

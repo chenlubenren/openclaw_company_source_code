@@ -167,7 +167,7 @@ function MobileProjectRow({
             event.stopPropagation();
             onDelete(project);
           }}
-          className={`absolute left-2 top-2 z-10 flex items-center justify-center border-2 border-pixel-black bg-pixel-red font-pixel font-bold leading-none text-pixel-white opacity-0 transition-opacity hover:brightness-95 group-hover/project-row:opacity-100 group-focus-within/project-row:opacity-100 ${careMode ? 'h-10 w-10 text-lg' : 'h-7 w-7 text-sm'}`}
+          className={`pointer-events-none absolute left-2 top-2 z-10 flex items-center justify-center border-2 border-pixel-black bg-pixel-red font-pixel font-bold leading-none text-pixel-white opacity-0 transition-opacity hover:brightness-95 group-hover/project-row:pointer-events-auto group-hover/project-row:opacity-100 group-focus-within/project-row:pointer-events-auto group-focus-within/project-row:opacity-100 ${careMode ? 'h-10 w-10 text-lg' : 'h-7 w-7 text-sm'}`}
           style={{ boxShadow: '2px 2px 0 #101010' }}
           aria-label={`删除项目 ${project.name}`}
           title="删除项目"
@@ -455,7 +455,7 @@ function OfficialAdoptPrompt({
   if (!showOfficialAdoptPrompt) return null;
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-pixel-black/70 p-4">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-pixel-black/70 p-4">
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
@@ -776,7 +776,7 @@ function ProjectCard({
             event.stopPropagation();
             onDelete(project);
           }}
-          className="absolute left-2 top-2 z-10 flex h-8 w-8 items-center justify-center border-2 border-pixel-black bg-pixel-red font-pixel text-base font-bold leading-none text-pixel-white opacity-0 transition-opacity hover:brightness-95 group-hover/project-card:opacity-100 group-focus-within/project-card:opacity-100"
+          className="pointer-events-none absolute left-2 top-2 z-10 flex h-8 w-8 items-center justify-center border-2 border-pixel-black bg-pixel-red font-pixel text-base font-bold leading-none text-pixel-white opacity-0 transition-opacity hover:brightness-95 group-hover/project-card:pointer-events-auto group-hover/project-card:opacity-100 group-focus-within/project-card:pointer-events-auto group-focus-within/project-card:opacity-100"
           style={{ boxShadow: '2px 2px 0 #101010' }}
           aria-label={`删除项目 ${project.name}`}
           title="删除项目"

@@ -995,7 +995,7 @@ export default function NodeCanvas({
 
       {/* Side panel */}
       <div
-        className={`fixed inset-0 z-[80] items-end bg-pixel-black/70 p-3 md:static md:z-auto md:flex md:w-72 md:flex-col md:items-stretch md:gap-4 md:bg-transparent md:p-0 ${
+        className={`fixed inset-0 z-[200] items-end bg-pixel-black/70 p-3 md:static md:z-auto md:flex md:w-72 md:flex-col md:items-stretch md:gap-4 md:bg-transparent md:p-0 ${
           showMobileNodePanel ? 'flex' : 'hidden md:flex'
         }`}
         onClick={() => setShowMobileNodePanel(false)}
@@ -1243,7 +1243,7 @@ export default function NodeCanvas({
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-pixel-black/70"
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-pixel-black/70"
             onClick={() => setShowLobsterPicker(false)}
           >
             <motion.div

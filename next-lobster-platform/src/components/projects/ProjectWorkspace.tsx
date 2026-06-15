@@ -633,7 +633,7 @@ export function ProjectWorkspace({
                         <button
                           type="button"
                           onClick={() => deleteSession(session.id)}
-                          className={`mr-1 h-6 w-6 shrink-0 border-2 border-pixel-black bg-pixel-red text-center font-pixel text-xs leading-none text-pixel-white transition-opacity focus:opacity-100 ${hoveredSessionId === session.id ? 'opacity-100' : 'opacity-0'}`}
+                          className={`mr-1 h-6 w-6 shrink-0 border-2 border-pixel-black bg-pixel-red text-center font-pixel text-xs leading-none text-pixel-white transition-opacity focus:pointer-events-auto focus:opacity-100 ${hoveredSessionId === session.id ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`}
                           aria-label={`删除${session.title}`}
                         >
                           x
@@ -1192,7 +1192,7 @@ function TeamManagementCard({
                     <button
                       type="button"
                       aria-label={`配置 ${agent.name}`}
-                      className={`mr-1 h-8 w-8 shrink-0 border-2 border-pixel-black bg-pixel-white font-pixel text-lg leading-none text-pixel-black transition-opacity hover:bg-pixel-yellow focus:opacity-100 ${menuOpen ? 'opacity-100' : 'opacity-0 group-hover/agent-row:opacity-100 group-focus-within/agent-row:opacity-100'}`}
+                      className={`mr-1 h-8 w-8 shrink-0 border-2 border-pixel-black bg-pixel-white font-pixel text-lg leading-none text-pixel-black transition-opacity hover:bg-pixel-yellow focus:opacity-100 ${menuOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0 group-hover/agent-row:pointer-events-auto group-hover/agent-row:opacity-100 group-focus-within/agent-row:pointer-events-auto group-focus-within/agent-row:opacity-100'}`}
                       onClick={(event) => {
                         event.stopPropagation();
                         setAgentMenuOpenId((current) => current === agent.id ? null : agent.id);
@@ -1202,7 +1202,7 @@ function TeamManagementCard({
                     </button>
                     {menuOpen && (
                       <div
-                        className="absolute right-1 top-10 z-40 w-44 border-2 border-pixel-black bg-pixel-white py-1"
+                        className="absolute right-1 top-10 z-[90] w-44 border-2 border-pixel-black bg-pixel-white py-1"
                         style={{ boxShadow: '3px 3px 0 #101010' }}
                         onClick={(event) => event.stopPropagation()}
                       >
@@ -1540,11 +1540,11 @@ function TeamCompositionModal({
 
 function ModalFrame({ title, children, onClose, maxWidthClass }: { title: string; children: ReactNode; onClose: () => void; maxWidthClass: string }) {
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-pixel-black/70 p-3" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-pixel-black/70 p-3" role="dialog" aria-modal="true">
       <div className={`max-h-[92vh] w-full overflow-auto border-4 border-pixel-black bg-pixel-white ${maxWidthClass}`} style={{ boxShadow: '8px 8px 0 #101010' }}>
         <div className="sticky top-0 z-[90] flex items-center justify-between gap-3 border-b-4 border-pixel-black bg-pixel-white p-3">
           <p className="min-w-0 truncate font-pixel text-xl font-bold text-pixel-black">{title}</p>
-          <button type="button" onClick={(event) => { event.preventDefault(); event.stopPropagation(); onClose(); }} className="relative z-[100] h-10 w-10 shrink-0 border-2 border-pixel-black bg-pixel-red font-pixel text-xl leading-none text-pixel-white hover:bg-pixel-gray" aria-label="关闭">x</button>
+          <button type="button" onClick={(event) => { event.preventDefault(); event.stopPropagation(); onClose(); }} className="relative z-[200] h-10 w-10 shrink-0 border-2 border-pixel-black bg-pixel-red font-pixel text-xl leading-none text-pixel-white hover:bg-pixel-gray" aria-label="关闭">x</button>
         </div>
         <div className="p-4">{children}</div>
       </div>

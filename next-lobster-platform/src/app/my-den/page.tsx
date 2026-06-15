@@ -372,7 +372,7 @@ export default function MyDenPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 p-4"
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4"
             onClick={() => setAddTargetCaveId(null)}
           >
             <motion.div
@@ -489,7 +489,7 @@ export default function MyDenPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[120] flex items-center justify-center bg-black/40"
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40"
             onClick={() => setShowCreateDialog(false)}
           >
             <motion.div

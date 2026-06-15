@@ -183,7 +183,7 @@ export function LobsterCard({
       )}
 
       {!silhouette && (
-        <div className={`absolute top-2 right-2 z-30 transition-opacity duration-150 ${menuOpen ? 'opacity-100' : 'opacity-0 group-hover/lobster-card:opacity-100 group-focus-within/lobster-card:opacity-100'}`}>
+        <div className={`absolute top-2 right-2 z-[80] transition-opacity duration-150 ${menuOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0 group-hover/lobster-card:pointer-events-auto group-hover/lobster-card:opacity-100 group-focus-within/lobster-card:pointer-events-auto group-focus-within/lobster-card:opacity-100'}`}>
           <button
             type="button"
             aria-label="agent 操作菜单"

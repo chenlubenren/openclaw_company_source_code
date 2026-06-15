@@ -185,7 +185,7 @@ export function FeishuIntegrationCard({
       </section>
 
       {open && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-pixel-black/45 px-4 py-6">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-pixel-black/45 px-4 py-6">
           <div
             className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden border-4 border-pixel-black bg-pixel-white"
             style={{ boxShadow: '8px 8px 0px 0px #101010' }}

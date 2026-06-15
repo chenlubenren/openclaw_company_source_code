@@ -12,7 +12,7 @@ export function ProjectInfoMenu({ project, revealOnHover = false, onDelete }: Pr
   const intro = project.description?.trim() || project.notes?.trim() || '暂无简介';
   const workspacePath = formatProjectWorkspacePath(project.workspacePath);
   const revealClass = revealOnHover
-    ? 'opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100'
+    ? 'pointer-events-none opacity-0 transition-opacity focus-within:pointer-events-auto focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100'
     : '';
 
   if (onDelete) {
@@ -43,7 +43,7 @@ export function ProjectInfoMenu({ project, revealOnHover = false, onDelete }: Pr
         ...
       </summary>
       <div
-        className="absolute right-0 top-9 z-30 w-[min(320px,80vw)] border-4 border-pixel-black bg-pixel-white p-3 font-pixel text-xs text-pixel-black"
+        className="absolute right-0 top-9 z-[90] w-[min(320px,80vw)] border-4 border-pixel-black bg-pixel-white p-3 font-pixel text-xs text-pixel-black"
         style={{ boxShadow: '4px 4px 0 #101010' }}
       >
         <ProjectInfoRow label="项目名称" value={project.name} />

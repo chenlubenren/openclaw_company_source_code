@@ -119,7 +119,7 @@ export function Header({
               </button>
 
               {showUserMenu && (
-                <div className="absolute right-0 top-full mt-2 z-50">
+                <div className="absolute right-0 top-full z-[180] mt-2">
                   <UserMenu onClose={() => setShowUserMenu(false)} />
                 </div>
               )}

@@ -972,7 +972,7 @@ export default function AgentChatPage() {
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
-                className="absolute right-3 top-[calc(100%+6px)] z-50 w-64 border-4 border-pixel-black bg-pixel-white p-2 md:hidden"
+                className="absolute right-3 top-[calc(100%+6px)] z-[180] w-64 border-4 border-pixel-black bg-pixel-white p-2 md:hidden"
                 style={{ boxShadow: '4px 4px 0px 0px #101010' }}
               >
                 <div className="grid grid-cols-3 gap-1 border-b-2 border-pixel-black pb-2">
@@ -1203,7 +1203,7 @@ export default function AgentChatPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[120] bg-pixel-black/40 p-0 md:flex md:items-stretch md:justify-end md:p-4"
+              className="fixed inset-0 z-[200] bg-pixel-black/40 p-0 md:flex md:items-stretch md:justify-end md:p-4"
               role="dialog"
               aria-modal="true"
               onClick={() => setShowSettings(false)}
@@ -1440,7 +1440,7 @@ function ChatView(props: ChatViewProps) {
         </div>
         <div className="relative inline-block max-w-[85%]">
           <div
-            className={`absolute top-8 flex flex-col gap-1 ${actionPlacement} opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100`}
+            className={`pointer-events-none absolute top-8 flex flex-col gap-1 ${actionPlacement} opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100`}
           >
             {!systemMessage && (
               <MessageActionButton
@@ -1539,11 +1539,11 @@ function ChatView(props: ChatViewProps) {
                           type="button"
                           onClick={(event) => handleDeleteSession(event, session.id)}
                           disabled={isDeleting}
-                          className={`border-2 border-pixel-black px-2 py-1 font-pixel text-[10px] transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 ${
+                          className={`pointer-events-none border-2 border-pixel-black px-2 py-1 font-pixel text-[10px] transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 ${
                             isActive
                               ? 'bg-pixel-white text-pixel-black opacity-0'
                               : 'bg-pixel-yellow text-pixel-black opacity-0'
-                          } disabled:cursor-not-allowed disabled:opacity-100`}
+                          } disabled:pointer-events-auto disabled:cursor-not-allowed disabled:opacity-100`}
                         >
                           {isDeleting ? '删除中' : '删除'}
                         </button>

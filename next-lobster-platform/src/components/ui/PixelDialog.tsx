@@ -29,7 +29,7 @@ export function PixelDialog({ isOpen, onClose, title, children }: PixelDialogPro
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[120] flex items-center justify-center overflow-y-auto bg-pixel-black/70 p-4"
+          className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-pixel-black/70 p-4"
           onClick={onClose}
         >
           <motion.div

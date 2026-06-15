@@ -140,14 +140,14 @@ function TraditionalDesktopSidebar({
     <>
       <aside
         aria-hidden={!open}
-        className="fixed left-0 top-0 z-[55] hidden h-screen flex-col border-r-4 border-pixel-black bg-pixel-black text-pixel-white transition-[transform,opacity] duration-300 ease-out md:flex"
+        className="fixed left-0 top-0 z-[40] hidden h-screen flex-col border-r-4 border-pixel-black bg-pixel-black text-pixel-white transition-[left,opacity] duration-300 ease-out md:flex"
         data-traditional-sidebar="true"
         style={{
           width,
+          left: open ? 0 : -width,
           boxShadow: '6px 0 0 #101010',
           opacity: open ? 1 : 0,
           pointerEvents: open ? 'auto' : 'none',
-          transform: open ? 'translateX(0)' : `translateX(-${width}px)`,
         }}
       >
           <div className="border-b-4 border-pixel-gray/50 px-4 py-4">
@@ -248,7 +248,7 @@ function TraditionalDesktopSidebar({
                                 event.stopPropagation();
                                 onDeleteProject(project);
                               }}
-                              className="absolute left-1 top-1 flex h-7 w-7 items-center justify-center border-2 border-pixel-black bg-pixel-red font-pixel text-xs font-bold leading-none text-pixel-white opacity-0 transition-opacity hover:brightness-95 group-hover/sidebar-project:opacity-100 group-focus-within/sidebar-project:opacity-100"
+                              className="pointer-events-none absolute left-1 top-1 flex h-7 w-7 items-center justify-center border-2 border-pixel-black bg-pixel-red font-pixel text-xs font-bold leading-none text-pixel-white opacity-0 transition-opacity hover:brightness-95 group-hover/sidebar-project:pointer-events-auto group-hover/sidebar-project:opacity-100 group-focus-within/sidebar-project:pointer-events-auto group-focus-within/sidebar-project:opacity-100"
                               style={{ boxShadow: '2px 2px 0 #101010' }}
                               aria-label={`删除项目 ${project.name}`}
                               title="删除项目"
@@ -289,7 +289,7 @@ function TraditionalDesktopSidebar({
           animate={{ x: 0, opacity: 1 }}
           whileHover={{ x: 2 }}
           whileTap={{ x: 0, scale: 0.96 }}
-          className="fixed left-0 top-[96px] z-[60] hidden h-16 w-9 items-center justify-center border-y-4 border-r-4 border-pixel-black bg-pixel-yellow text-pixel-black transition-colors hover:bg-pixel-green md:flex"
+          className="fixed left-0 top-[96px] z-[45] hidden h-16 w-9 items-center justify-center border-y-4 border-r-4 border-pixel-black bg-pixel-yellow text-pixel-black transition-colors hover:bg-pixel-green md:flex"
           style={{ boxShadow: '3px 3px 0px 0px #101010' }}
         >
           <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden="true" shapeRendering="crispEdges">

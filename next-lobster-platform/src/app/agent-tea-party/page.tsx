@@ -391,7 +391,7 @@ function AddMemberModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-0 md:p-4"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-0 md:p-4"
       onClick={onClose}
     >
       <motion.div
@@ -613,7 +613,7 @@ function MembersModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-0 md:p-4"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-0 md:p-4"
       onClick={onClose}
     >
       <motion.div
@@ -873,7 +873,7 @@ function WhiteboardModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/55 p-0 md:p-4"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/55 p-0 md:p-4"
       onClick={onClose}
     >
       <motion.section
@@ -1317,7 +1317,7 @@ function SessionDetail({
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
-                className="absolute right-3 top-[calc(100%+6px)] z-50 w-64 border-4 border-pixel-black bg-pixel-white p-2 md:hidden"
+                className="absolute right-3 top-[calc(100%+6px)] z-[180] w-64 border-4 border-pixel-black bg-pixel-white p-2 md:hidden"
                 style={{ boxShadow: '4px 4px 0 #101010' }}
               >
                 <div className="grid gap-1">
@@ -2182,7 +2182,7 @@ export default function AgentTeaPartyPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-0 md:p-4"
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-0 md:p-4"
             onClick={() => setShowCreate(false)}
           >
             <motion.div
