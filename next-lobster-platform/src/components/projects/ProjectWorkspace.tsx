@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ArchitectureInfo } from '@/components/architecture/ArchitectureInfo';
 import { NodeFlowPreview } from '@/components/architecture/NodeFlowPreview';
 import { AgentConfigModal } from '@/components/agent/AgentConfigModal';
+import { ModalPortal } from '@/components/ui/ModalPortal';
 import { PixelButton } from '@/components/ui/PixelButton';
 import { PixelInput } from '@/components/ui/PixelInput';
 import { deleteProjectFile, fetchProjectDeliverables, fetchProjectExecutions, fetchProjectFileContent, fetchProjectFiles, fetchWorkflowExecution, renameProjectFile, reviewProjectDeliverable, startWorkflowExecution } from '@/lib/api';
@@ -1540,15 +1541,17 @@ function TeamCompositionModal({
 
 function ModalFrame({ title, children, onClose, maxWidthClass }: { title: string; children: ReactNode; onClose: () => void; maxWidthClass: string }) {
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-pixel-black/70 p-3" role="dialog" aria-modal="true">
-      <div className={`max-h-[92vh] w-full overflow-auto border-4 border-pixel-black bg-pixel-white ${maxWidthClass}`} style={{ boxShadow: '8px 8px 0 #101010' }}>
-        <div className="sticky top-0 z-[90] flex items-center justify-between gap-3 border-b-4 border-pixel-black bg-pixel-white p-3">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-pixel-black/70 p-3" role="dialog" aria-modal="true">
+      <div className={`flex max-h-[calc(100dvh-1.5rem)] w-full flex-col overflow-hidden border-4 border-pixel-black bg-pixel-white ${maxWidthClass}`} style={{ boxShadow: '8px 8px 0 #101010' }}>
+        <div className="z-[90] flex shrink-0 items-center justify-between gap-3 border-b-4 border-pixel-black bg-pixel-white p-3">
           <p className="min-w-0 truncate font-pixel text-xl font-bold text-pixel-black">{title}</p>
           <button type="button" onClick={(event) => { event.preventDefault(); event.stopPropagation(); onClose(); }} className="relative z-[200] h-10 w-10 shrink-0 border-2 border-pixel-black bg-pixel-red font-pixel text-xl leading-none text-pixel-white hover:bg-pixel-gray" aria-label="关闭">x</button>
         </div>
-        <div className="p-4">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">{children}</div>
       </div>
-    </div>
+      </div>
+    </ModalPortal>
   );
 }
 

@@ -23,6 +23,7 @@ import {
   getSmoothStepPath,
   type ReactFlowInstance,
 } from '@xyflow/react';
+import { ModalPortal } from '@/components/ui/ModalPortal';
 import '@xyflow/react/dist/style.css';
 import { motion } from 'framer-motion';
 import { PixelButton } from '@/components/ui/PixelButton';
@@ -1240,16 +1241,17 @@ export default function NodeCanvas({
 
         {/* Lobster picker modal */}
         {showLobsterPicker && (
-          <motion.div
+          <ModalPortal>
+            <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="fixed inset-0 z-[200] flex items-center justify-center bg-pixel-black/70"
+            className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-pixel-black/70 p-4"
             onClick={() => setShowLobsterPicker(false)}
           >
             <motion.div
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
-              className="bg-pixel-white border-4 border-pixel-black p-6 max-w-md w-full mx-4"
+              className="flex max-h-[calc(100dvh-2rem)] w-full max-w-md flex-col overflow-hidden border-4 border-pixel-black bg-pixel-white p-6"
               style={{ boxShadow: '8px 8px 0px 0px #101010' }}
               onClick={(e) => e.stopPropagation()}
             >
@@ -1261,7 +1263,7 @@ export default function NodeCanvas({
                   <p className="font-pixel text-pixel-black/40 text-xs">请先在「我的agent窝」领养或添加Agent后再来关联</p>
                 </div>
               ) : (
-                <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
                   {lobsters.map((lobster) => {
                     const selectedData = selectedNodeData as AgentNodeData | undefined;
                     const isSelected = selectedData?.linkedLobster?.id === lobster.id || selectedData?.linkedLobsterId === lobster.id;
@@ -1298,12 +1300,13 @@ export default function NodeCanvas({
               )}
               <button
                 onClick={() => setShowLobsterPicker(false)}
-                className="w-full mt-4 p-3 bg-pixel-black text-pixel-white border-4 border-pixel-black font-pixel text-sm hover:bg-pixel-gray transition-colors"
+                className="mt-4 w-full shrink-0 border-4 border-pixel-black bg-pixel-black p-3 font-pixel text-sm text-pixel-white transition-colors hover:bg-pixel-gray"
               >
                 取消
               </button>
             </motion.div>
-          </motion.div>
+            </motion.div>
+          </ModalPortal>
         )}
       </div>
     </div>

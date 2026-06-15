@@ -8,6 +8,7 @@ import { useAgentChat } from '@/hooks/useAgentChat';
 import { PixelButton } from '@/components/ui/PixelButton';
 import { PixelInput } from '@/components/ui/PixelInput';
 import { BackButton } from '@/components/ui/BackButton';
+import { ModalPortal } from '@/components/ui/ModalPortal';
 import { AgentMonitorPanel } from '@/components/chat/AgentMonitorPanel';
 import { AgentSettingsPanel } from '@/components/chat/AgentSettingsPanel';
 import { CapabilitiesConfig } from '@/components/chat/CapabilitiesConfig';
@@ -1199,11 +1200,12 @@ export default function AgentChatPage() {
         {/* Settings Panel */}
         <AnimatePresence>
           {showSettings && (
-            <motion.div
+            <ModalPortal>
+              <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[200] bg-pixel-black/40 p-0 md:flex md:items-stretch md:justify-end md:p-4"
+              className="fixed inset-0 z-[200] overflow-y-auto bg-pixel-black/40 p-0 md:flex md:items-stretch md:justify-end md:p-4"
               role="dialog"
               aria-modal="true"
               onClick={() => setShowSettings(false)}
@@ -1227,7 +1229,8 @@ export default function AgentChatPage() {
                   }}
                 />
               </motion.div>
-            </motion.div>
+              </motion.div>
+            </ModalPortal>
           )}
         </AnimatePresence>
       </div>

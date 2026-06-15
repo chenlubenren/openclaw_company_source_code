@@ -2,6 +2,7 @@
 
 import { ReactNode, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ModalPortal } from '@/components/ui/ModalPortal';
 
 interface PixelDialogProps {
   isOpen: boolean;
@@ -25,7 +26,8 @@ export function PixelDialog({ isOpen, onClose, title, children }: PixelDialogPro
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div
+        <ModalPortal>
+          <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -56,7 +58,8 @@ export function PixelDialog({ isOpen, onClose, title, children }: PixelDialogPro
               {showContent && children}
             </div>
           </motion.div>
-        </motion.div>
+          </motion.div>
+        </ModalPortal>
       )}
     </AnimatePresence>
   );

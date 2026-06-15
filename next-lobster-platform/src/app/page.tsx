@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { SectionA, SectionB, MenuCard } from '@/components/layout/Dashboard';
 import { LobsterCard } from '@/components/lobster/LobsterCard';
 import { AgentConfigModal } from '@/components/agent/AgentConfigModal';
+import { ModalPortal } from '@/components/ui/ModalPortal';
 import { PixelHero } from '@/components/effects/PixelHero';
 import { MobileNavIcon, isMobileTabKey, mobileTabs, useMobileDisplayMode, type MobileDisplayMode, type MobileTabKey } from '@/components/layout/MobileAppNav';
 import { useStore } from '@/store/useStore';
@@ -455,11 +456,12 @@ function OfficialAdoptPrompt({
   if (!showOfficialAdoptPrompt) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-pixel-black/70 p-4">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-pixel-black/70 p-4">
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-[680px] border-4 border-pixel-black bg-white p-4 md:p-5"
+        className="max-h-[calc(100dvh-2rem)] w-full max-w-[680px] overflow-y-auto border-4 border-pixel-black bg-white p-4 md:p-5"
         style={{ boxShadow: '6px 6px 0 #101010' }}
       >
         <div className="mb-4 flex items-start justify-between gap-3">
@@ -531,7 +533,8 @@ function OfficialAdoptPrompt({
           </button>
         </div>
       </motion.div>
-    </div>
+      </div>
+    </ModalPortal>
   );
 }
 

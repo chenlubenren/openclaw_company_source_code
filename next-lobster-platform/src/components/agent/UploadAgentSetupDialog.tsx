@@ -10,6 +10,7 @@ import {
 } from '@/components/pixel/PixelCanvas';
 import { PixelButton } from '@/components/ui/PixelButton';
 import { PixelInput } from '@/components/ui/PixelInput';
+import { ModalPortal } from '@/components/ui/ModalPortal';
 import {
   AGENT_TYPE_OPTIONS,
   getAgentTypeLabel,
@@ -172,14 +173,15 @@ export function UploadAgentSetupDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-pixel-black/70 p-4">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-pixel-black/70 p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.96, y: 12 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="flex max-h-[90vh] w-full max-w-6xl flex-col border-4 border-pixel-black bg-pixel-white"
+        className="flex max-h-[calc(100dvh-2rem)] w-full max-w-6xl flex-col overflow-hidden border-4 border-pixel-black bg-pixel-white"
         style={{ boxShadow: '10px 10px 0 #101010' }}
       >
-        <div className="flex items-start justify-between gap-4 border-b-4 border-pixel-black bg-pixel-yellow px-4 py-3">
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b-4 border-pixel-black bg-pixel-yellow px-4 py-3">
           <div>
             <p className="font-pixel text-sm font-bold text-pixel-black">Agent形象设置</p>
             <p className="mt-1 font-pixel text-xs text-pixel-black/60">
@@ -477,6 +479,7 @@ export function UploadAgentSetupDialog({
           </div>
         </div>
       </motion.div>
-    </div>
+      </div>
+    </ModalPortal>
   );
 }

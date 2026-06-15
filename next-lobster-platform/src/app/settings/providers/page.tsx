@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { BackButton } from '@/components/ui/BackButton';
+import { ModalPortal } from '@/components/ui/ModalPortal';
 import { PixelButton } from '@/components/ui/PixelButton';
 import { useAuthStore } from '@/store/useAuthStore';
 import { API_BASE } from '@/lib/runtime';
@@ -428,18 +429,19 @@ export default function ProviderSettingsPage() {
       </motion.div>
 
       {copyProvider && (
-        <motion.div
+        <ModalPortal>
+          <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-pixel-black/50 p-4"
+          className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-pixel-black/50 p-4"
           onClick={() => setCopyProvider(null)}
         >
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
-            className="bg-pixel-white border-8 border-pixel-black w-full max-w-lg"
+            className="flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col overflow-hidden border-8 border-pixel-black bg-pixel-white"
             style={{ boxShadow: '8px 8px 0 #101010' }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -453,7 +455,7 @@ export default function ProviderSettingsPage() {
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-6">
               <p className="font-pixel text-sm text-pixel-black/70">
                 将 {copyProvider.name} 的 API Key、Base URL 和模型配置复制到所选 Agent 类型。
               </p>
@@ -480,29 +482,31 @@ export default function ProviderSettingsPage() {
               )}
             </div>
 
-            <div className="bg-pixel-white border-t-4 border-pixel-black px-6 py-4 flex gap-3 justify-end">
+            <div className="flex shrink-0 gap-3 justify-end border-t-4 border-pixel-black bg-pixel-white px-6 py-4">
               <PixelButton variant="secondary" onClick={() => setCopyProvider(null)}>取消</PixelButton>
               <PixelButton variant="primary" onClick={handleCopyProvider} disabled={copying}>
                 {copying ? '复制中...' : '复制'}
               </PixelButton>
             </div>
           </motion.div>
-        </motion.div>
+          </motion.div>
+        </ModalPortal>
       )}
 
       {showForm && (
-        <motion.div
+        <ModalPortal>
+          <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-pixel-black/50 p-4"
+          className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-pixel-black/50 p-4"
           onClick={() => setShowForm(false)}
         >
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
-            className="bg-pixel-white border-8 border-pixel-black w-full max-w-3xl max-h-[90vh] overflow-y-auto"
+            className="flex max-h-[calc(100dvh-2rem)] w-full max-w-3xl flex-col overflow-hidden border-8 border-pixel-black bg-pixel-white"
             style={{ boxShadow: '8px 8px 0 #101010' }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -518,7 +522,7 @@ export default function ProviderSettingsPage() {
               </button>
             </div>
 
-            <div className="p-6 space-y-5">
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-6">
               <section>
                 <label className="font-pixel text-xs text-pixel-black/60 mb-2 block">
                   常用供应商
@@ -698,14 +702,15 @@ export default function ProviderSettingsPage() {
               )}
             </div>
 
-            <div className="bg-pixel-white border-t-4 border-pixel-black px-6 py-4 flex gap-3 justify-end">
+            <div className="flex shrink-0 gap-3 justify-end border-t-4 border-pixel-black bg-pixel-white px-6 py-4">
               <PixelButton variant="secondary" onClick={() => setShowForm(false)}>取消</PixelButton>
               <PixelButton variant="primary" onClick={handleSave} disabled={saving}>
                 {saving ? '保存中...' : '保存'}
               </PixelButton>
             </div>
           </motion.div>
-        </motion.div>
+          </motion.div>
+        </ModalPortal>
       )}
     </div>
   );

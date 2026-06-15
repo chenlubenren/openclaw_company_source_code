@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { BackButton } from '@/components/ui/BackButton';
+import { ModalPortal } from '@/components/ui/ModalPortal';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useStore } from '@/store/useStore';
 import {
@@ -291,11 +292,12 @@ function AdoptModal({
   };
 
   return (
-    <motion.div
+    <ModalPortal>
+      <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-4"
+      className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-black/70 p-4"
       onClick={onClose}
     >
       <motion.div
@@ -348,7 +350,8 @@ function AdoptModal({
           </button>
         </div>
       </motion.div>
-    </motion.div>
+      </motion.div>
+    </ModalPortal>
   );
 }
 
@@ -374,11 +377,12 @@ function AgentDetailModal({
   onAdopt: () => void;
 }) {
   return (
-    <motion.div
+    <ModalPortal>
+      <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-[2px]"
       onClick={onClose}
     >
       <motion.div
@@ -463,7 +467,8 @@ function AgentDetailModal({
           </button>
         </div>
       </motion.div>
-    </motion.div>
+      </motion.div>
+    </ModalPortal>
   );
 }
 
@@ -873,23 +878,24 @@ function TeamAdoptModal({
   };
 
   return (
-    <motion.div
+    <ModalPortal>
+      <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-4"
+      className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-black/70 p-4"
       onClick={onClose}
     >
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
-        className="w-full max-w-lg border-[3px] border-pixel-black bg-pixel-white"
+        className="flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col overflow-hidden border-[3px] border-pixel-black bg-pixel-white"
         style={{ boxShadow: '3px 3px 0px 0px #101010' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div
-          className="px-4 py-3 border-b-[3px] border-pixel-black"
+          className="shrink-0 border-b-[3px] border-pixel-black px-4 py-3"
           style={{ background: template.color }}
         >
           <div className="flex items-center gap-3">
@@ -905,7 +911,7 @@ function TeamAdoptModal({
           </div>
         </div>
 
-        <div className="p-4 space-y-4">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
           <div>
             <label className="block font-pixel text-sm font-bold text-pixel-black mb-1">
               团队名称（可修改）
@@ -1009,7 +1015,7 @@ function TeamAdoptModal({
           {error && <p className="font-pixel text-xs text-pixel-red">{error}</p>}
         </div>
 
-        <div className="flex gap-2 border-t-[3px] border-pixel-black p-3">
+        <div className="flex shrink-0 gap-2 border-t-[3px] border-pixel-black p-3">
           <button
             onClick={onClose}
             className="flex-1 border-[3px] border-pixel-black bg-pixel-white py-2.5 font-pixel font-bold text-pixel-black hover:bg-pixel-black/5"
@@ -1026,7 +1032,8 @@ function TeamAdoptModal({
           </button>
         </div>
       </motion.div>
-    </motion.div>
+      </motion.div>
+    </ModalPortal>
   );
 }
 
@@ -1042,11 +1049,12 @@ function TeamDetailModal({
   const [workflowOpen, setWorkflowOpen] = useState(false);
 
   return (
-    <motion.div
+    <ModalPortal>
+      <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-[2px]"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -1189,7 +1197,8 @@ function TeamDetailModal({
           </button>
         </div>
       </motion.div>
-    </motion.div>
+      </motion.div>
+    </ModalPortal>
   );
 }
 

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { BackButton } from '@/components/ui/BackButton';
 import { PixelButton } from '@/components/ui/PixelButton';
 import { PixelInput } from '@/components/ui/PixelInput';
+import { ModalPortal } from '@/components/ui/ModalPortal';
 import { ProjectInfoMenu } from '@/components/projects/ProjectInfoMenu';
 import { useStore } from '@/store/useStore';
 import type { Lobster, Project, ProjectInput } from '@/types';
@@ -115,8 +116,9 @@ function ProjectEditorModal({
   onToggleAgent: (agentId: string) => void;
 }) {
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-pixel-black/70 p-3" role="dialog" aria-modal="true">
-      <section className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden border-4 border-pixel-black bg-pixel-white" style={{ boxShadow: '8px 8px 0 #101010' }}>
+    <ModalPortal>
+      <div className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-pixel-black/70 p-3" role="dialog" aria-modal="true">
+      <section className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-5xl flex-col overflow-hidden border-4 border-pixel-black bg-pixel-white" style={{ boxShadow: '8px 8px 0 #101010' }}>
         <div className="shrink-0 flex items-center justify-between gap-3 border-b-4 border-pixel-black bg-pixel-white p-4">
           <div className="min-w-0">
             <p className="truncate font-pixel text-[2rem] font-bold leading-none text-pixel-black md:text-2xl md:leading-normal">
@@ -221,7 +223,8 @@ function ProjectEditorModal({
           </PixelButton>
         </div>
       </section>
-    </div>
+      </div>
+    </ModalPortal>
   );
 }
 

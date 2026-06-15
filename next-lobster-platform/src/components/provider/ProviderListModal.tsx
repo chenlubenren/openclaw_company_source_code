@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PixelButton } from '@/components/ui/PixelButton';
+import { ModalPortal } from '@/components/ui/ModalPortal';
 import { useAuthStore } from '@/store/useAuthStore';
 import {
   PROVIDER_TYPES,
@@ -165,22 +166,23 @@ export function ProviderModal({ onClose, onSaved, editProvider }: ProviderModalP
 
   return (
     <AnimatePresence>
-      <motion.div
+      <ModalPortal>
+        <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[200] flex items-center justify-center bg-pixel-black/50 p-4"
+        className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-pixel-black/50 p-4"
         onClick={onClose}
       >
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
-          className="bg-pixel-white border-8 border-pixel-black w-full max-w-3xl max-h-[90vh] overflow-y-auto"
+          className="flex max-h-[calc(100dvh-2rem)] w-full max-w-3xl flex-col overflow-hidden border-8 border-pixel-black bg-pixel-white"
           style={{ boxShadow: '8px 8px 0px 0px #101010' }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="bg-pixel-yellow border-b-4 border-pixel-black px-6 py-4 flex items-center justify-between">
+          <div className="flex shrink-0 items-center justify-between border-b-4 border-pixel-black bg-pixel-yellow px-6 py-4">
             <h2 className="font-pixel text-xl text-pixel-black">
               {editProvider ? '编辑供应商' : '新增供应商'}
             </h2>
@@ -189,7 +191,7 @@ export function ProviderModal({ onClose, onSaved, editProvider }: ProviderModalP
             </button>
           </div>
 
-          <div className="p-6 space-y-5">
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-6">
             <div>
               <label className="font-pixel text-xs text-pixel-black/60 mb-2 block">Agent 平台</label>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
@@ -352,7 +354,7 @@ export function ProviderModal({ onClose, onSaved, editProvider }: ProviderModalP
             )}
           </div>
 
-          <div className="bg-pixel-white border-t-4 border-pixel-black px-6 py-4 flex gap-3 justify-end">
+          <div className="flex shrink-0 gap-3 justify-end border-t-4 border-pixel-black bg-pixel-white px-6 py-4">
             <PixelButton variant="secondary" onClick={onClose}>取消</PixelButton>
             <PixelButton variant="primary" onClick={handleSave} disabled={saving}>
               {saving ? '保存中...' : '保存'}
@@ -360,6 +362,7 @@ export function ProviderModal({ onClose, onSaved, editProvider }: ProviderModalP
           </div>
         </motion.div>
       </motion.div>
+      </ModalPortal>
     </AnimatePresence>
   );
 }
@@ -467,22 +470,23 @@ export function ProviderListModal({ onClose }: ProviderListModalProps) {
 
   return (
     <AnimatePresence>
-      <motion.div
+      <ModalPortal>
+        <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[200] flex items-center justify-center bg-pixel-black/50 p-4"
+        className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-pixel-black/50 p-4"
         onClick={onClose}
       >
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
-          className="bg-pixel-white border-8 border-pixel-black w-full max-w-lg max-h-[90vh] overflow-y-auto"
+          className="flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col overflow-hidden border-8 border-pixel-black bg-pixel-white"
           style={{ boxShadow: '8px 8px 0px 0px #101010' }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="bg-pixel-yellow border-b-4 border-pixel-black px-6 py-4 flex items-center justify-between">
+          <div className="flex shrink-0 items-center justify-between border-b-4 border-pixel-black bg-pixel-yellow px-6 py-4">
             <h2 className="font-pixel text-xl text-pixel-black">供应商配置</h2>
             <div className="flex items-center gap-2">
               <PixelButton variant="primary" size="sm" onClick={() => { setEditProvider(null); setShowAdd(true); }}>
@@ -494,7 +498,7 @@ export function ProviderListModal({ onClose }: ProviderListModalProps) {
             </div>
           </div>
 
-          <div className="p-6">
+          <div className="min-h-0 flex-1 overflow-y-auto p-6">
             {loading ? (
               <div className="text-center py-8 font-pixel text-pixel-black/50">加载中...</div>
             ) : providers.length === 0 ? (
@@ -552,31 +556,33 @@ export function ProviderListModal({ onClose }: ProviderListModalProps) {
           </div>
         </motion.div>
       </motion.div>
+      </ModalPortal>
 
       {copyProvider && (
-        <motion.div
+        <ModalPortal>
+          <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[210] flex items-center justify-center bg-pixel-black/50 p-4"
+          className="fixed inset-0 z-[210] flex items-center justify-center overflow-y-auto bg-pixel-black/50 p-4"
           onClick={() => setCopyProvider(null)}
         >
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
-            className="bg-pixel-white border-8 border-pixel-black w-full max-w-lg"
+            className="flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col overflow-hidden border-8 border-pixel-black bg-pixel-white"
             style={{ boxShadow: '8px 8px 0px 0px #101010' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="bg-pixel-blue border-b-4 border-pixel-black px-6 py-4 flex items-center justify-between">
+            <div className="flex shrink-0 items-center justify-between border-b-4 border-pixel-black bg-pixel-blue px-6 py-4">
               <h2 className="font-pixel text-lg text-pixel-white">复制到其他模型</h2>
               <button onClick={() => setCopyProvider(null)} className="font-pixel text-pixel-white hover:text-pixel-yellow text-2xl leading-none">
                 x
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-6">
               <p className="font-pixel text-sm text-pixel-black/70">
                 将 {copyProvider.name} 的 API Key、Base URL 和模型配置复制到所选 Agent 类型。
               </p>
@@ -600,14 +606,15 @@ export function ProviderListModal({ onClose }: ProviderListModalProps) {
               )}
             </div>
 
-            <div className="bg-pixel-white border-t-4 border-pixel-black px-6 py-4 flex gap-3 justify-end">
+            <div className="flex shrink-0 gap-3 justify-end border-t-4 border-pixel-black bg-pixel-white px-6 py-4">
               <PixelButton variant="secondary" onClick={() => setCopyProvider(null)}>取消</PixelButton>
               <PixelButton variant="primary" onClick={handleCopyProvider} disabled={copying}>
                 {copying ? '复制中...' : '复制'}
               </PixelButton>
             </div>
           </motion.div>
-        </motion.div>
+          </motion.div>
+        </ModalPortal>
       )}
 
       {showAdd && (

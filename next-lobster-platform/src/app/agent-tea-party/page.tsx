@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BackButton } from '@/components/ui/BackButton';
 import { PixelButton } from '@/components/ui/PixelButton';
+import { ModalPortal } from '@/components/ui/ModalPortal';
 import { MessageRenderer } from '@/components/chat/MessageRenderer';
 import { LobsterSprite } from '@/components/lobster/LobsterSprite';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -387,11 +388,12 @@ function AddMemberModal({
   const available = lobsters.filter((lobster) => !session.memberIds.includes(lobster.id));
 
   return (
-    <motion.div
+    <ModalPortal>
+      <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-0 md:p-4"
+      className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-black/50 p-0 md:p-4"
       onClick={onClose}
     >
       <motion.div
@@ -453,7 +455,8 @@ function AddMemberModal({
           </PixelButton>
         </div>
       </motion.div>
-    </motion.div>
+      </motion.div>
+    </ModalPortal>
   );
 }
 
@@ -609,11 +612,12 @@ function MembersModal({
   onClose: () => void;
 }) {
   return (
-    <motion.div
+    <ModalPortal>
+      <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-0 md:p-4"
+      className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-black/50 p-0 md:p-4"
       onClick={onClose}
     >
       <motion.div
@@ -675,7 +679,8 @@ function MembersModal({
           </PixelButton>
         </div>
       </motion.div>
-    </motion.div>
+      </motion.div>
+    </ModalPortal>
   );
 }
 
@@ -869,11 +874,12 @@ function WhiteboardModal({
   };
 
   return (
-    <motion.div
+    <ModalPortal>
+      <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/55 p-0 md:p-4"
+      className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-black/55 p-0 md:p-4"
       onClick={onClose}
     >
       <motion.section
@@ -1121,7 +1127,8 @@ function WhiteboardModal({
           </div>
         </div>
       </motion.section>
-    </motion.div>
+      </motion.div>
+    </ModalPortal>
   );
 }
 function SessionDetail({
@@ -2178,25 +2185,26 @@ export default function AgentTeaPartyPage() {
 
       <AnimatePresence>
         {showCreate && (
-          <motion.div
+          <ModalPortal>
+            <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-0 md:p-4"
+            className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-black/50 p-0 md:p-4"
             onClick={() => setShowCreate(false)}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.94, y: 16 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.94, y: 16 }}
-              className="h-full w-full max-w-none overflow-hidden border-4 border-pixel-black bg-pixel-white md:h-auto md:max-w-md"
+              className="flex h-full w-full max-w-none flex-col overflow-hidden border-4 border-pixel-black bg-pixel-white md:h-auto md:max-h-[calc(100dvh-2rem)] md:max-w-md"
               style={{ boxShadow: '8px 8px 0 #101010' }}
               onClick={(event) => event.stopPropagation()}
             >
-              <div className="border-b-4 border-pixel-black bg-pixel-red px-4 py-3">
+              <div className="shrink-0 border-b-4 border-pixel-black bg-pixel-red px-4 py-3">
                 <h2 className="font-pixel text-lg text-pixel-white">创建茶话会</h2>
               </div>
-              <div className="p-5">
+              <div className="min-h-0 flex-1 overflow-y-auto p-5">
                 <label className="mb-2 block font-pixel text-sm text-pixel-black">名称</label>
                 <input
                   type="text"
@@ -2210,7 +2218,7 @@ export default function AgentTeaPartyPage() {
                   autoFocus
                 />
               </div>
-              <div className="flex gap-3 border-t-4 border-pixel-black p-4">
+              <div className="flex shrink-0 gap-3 border-t-4 border-pixel-black p-4">
                 <PixelButton variant="secondary" className="flex-1" onClick={() => setShowCreate(false)}>
                   取消
                 </PixelButton>
@@ -2219,7 +2227,8 @@ export default function AgentTeaPartyPage() {
                 </PixelButton>
               </div>
             </motion.div>
-          </motion.div>
+            </motion.div>
+          </ModalPortal>
         )}
       </AnimatePresence>
 

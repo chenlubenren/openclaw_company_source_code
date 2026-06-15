@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PixelButton } from '@/components/ui/PixelButton';
+import { ModalPortal } from '@/components/ui/ModalPortal';
 import { FeishuIntegrationCard } from '@/components/integration/FeishuIntegrationCard';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Lobster } from '@/types';
@@ -163,7 +164,8 @@ export function AgentConfigModal({ agent, onClose, onSave }: AgentConfigModalPro
 
   return (
     <AnimatePresence>
-      <motion.div
+      <ModalPortal>
+        <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -176,12 +178,12 @@ export function AgentConfigModal({ agent, onClose, onSave }: AgentConfigModalPro
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
-          className="my-auto w-full max-w-lg border-8 border-pixel-black bg-pixel-white max-h-[90vh] overflow-y-auto"
+          className="my-auto flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col overflow-hidden border-8 border-pixel-black bg-pixel-white"
           style={{ boxShadow: '8px 8px 0px 0px #101010' }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="bg-pixel-yellow border-b-4 border-pixel-black px-6 py-4 flex items-center justify-between">
+          <div className="flex shrink-0 items-center justify-between border-b-4 border-pixel-black bg-pixel-yellow px-6 py-4">
             <h2 className="font-pixel text-xl text-pixel-black flex items-center gap-2">
               <span>⚙️</span> Agent 配置
             </h2>
@@ -189,7 +191,7 @@ export function AgentConfigModal({ agent, onClose, onSave }: AgentConfigModalPro
           </div>
 
           {/* Content */}
-          <div className="p-6 space-y-6">
+          <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-6">
             {/* Avatar */}
             <div className="flex flex-col items-center gap-3">
               <div className="relative">
@@ -343,14 +345,15 @@ export function AgentConfigModal({ agent, onClose, onSave }: AgentConfigModalPro
           </div>
 
           {/* Footer */}
-          <div className="bg-pixel-white border-t-4 border-pixel-black px-6 py-4 flex gap-3 justify-end">
+          <div className="flex shrink-0 gap-3 justify-end border-t-4 border-pixel-black bg-pixel-white px-6 py-4">
             <PixelButton variant="secondary" onClick={onClose}>取消</PixelButton>
             <PixelButton variant="primary" onClick={handleSave} disabled={saving}>
               {saving ? '保存中...' : '保存配置'}
             </PixelButton>
           </div>
         </motion.div>
-      </motion.div>
+        </motion.div>
+      </ModalPortal>
     </AnimatePresence>
   );
 }

@@ -9,6 +9,7 @@ import { LobsterCard } from '@/components/lobster/LobsterCard';
 import { LobsterSprite } from '@/components/lobster/LobsterSprite';
 import { PixelButton } from '@/components/ui/PixelButton';
 import { BackButton } from '@/components/ui/BackButton';
+import { ModalPortal } from '@/components/ui/ModalPortal';
 import { AgentConfigModal } from '@/components/agent/AgentConfigModal';
 import { hasConfiguredProvider } from '@/lib/agentProvider';
 
@@ -367,12 +368,13 @@ export default function MyDenPage() {
       {/* 向指定窝添加Agent：可选暂无归属或其他窝的Agent */}
       <AnimatePresence>
         {addTargetCaveId != null && addTargetCave && (
-          <motion.div
+          <ModalPortal>
+            <motion.div
             key={addTargetCaveId}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4"
+            className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-black/40 p-4"
             onClick={() => setAddTargetCaveId(null)}
           >
             <motion.div
@@ -478,18 +480,20 @@ export default function MyDenPage() {
                 </PixelButton>
               </div>
             </motion.div>
-          </motion.div>
+            </motion.div>
+          </ModalPortal>
         )}
       </AnimatePresence>
 
       {/* Create Cave Dialog */}
       <AnimatePresence>
         {showCreateDialog && (
-          <motion.div
+          <ModalPortal>
+            <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40"
+            className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-black/40 p-4"
             onClick={() => setShowCreateDialog(false)}
           >
             <motion.div
@@ -497,11 +501,11 @@ export default function MyDenPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-              className="w-[400px] bg-pixel-white border-4 border-pixel-black overflow-hidden"
+              className="flex max-h-[calc(100dvh-2rem)] w-full max-w-[400px] flex-col overflow-hidden border-4 border-pixel-black bg-pixel-white"
               style={{ boxShadow: '8px 8px 0px 0px #101010' }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="bg-pixel-blue text-pixel-white font-pixel text-xl p-4 border-b-4 border-pixel-black flex justify-between items-center">
+              <div className="flex shrink-0 items-center justify-between border-b-4 border-pixel-black bg-pixel-blue p-4 font-pixel text-xl text-pixel-white">
                 <span>创建agent窝</span>
                 <button
                   onClick={() => setShowCreateDialog(false)}
@@ -512,7 +516,7 @@ export default function MyDenPage() {
                 </button>
               </div>
 
-              <div className="p-6 space-y-4">
+              <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-6">
                 <div>
                   <label className="font-pixel text-sm text-pixel-black block mb-2">窝名称</label>
                   <input
@@ -549,7 +553,7 @@ export default function MyDenPage() {
                 </div>
               </div>
 
-              <div className="p-4 border-t-4 border-pixel-black flex gap-3">
+              <div className="flex shrink-0 gap-3 border-t-4 border-pixel-black p-4">
                 <PixelButton variant="secondary" onClick={() => setShowCreateDialog(false)} className="flex-1">
                   取消
                 </PixelButton>
@@ -558,7 +562,8 @@ export default function MyDenPage() {
                 </PixelButton>
               </div>
             </motion.div>
-          </motion.div>
+            </motion.div>
+          </ModalPortal>
         )}
       </AnimatePresence>
 

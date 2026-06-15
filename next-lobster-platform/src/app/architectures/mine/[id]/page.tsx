@@ -20,6 +20,7 @@ import type {
 } from '@/types';
 import { PixelButton } from '@/components/ui/PixelButton';
 import { PixelInput } from '@/components/ui/PixelInput';
+import { ModalPortal } from '@/components/ui/ModalPortal';
 import { ArchitectureInfo } from '@/components/architecture/ArchitectureInfo';
 import { BackButton } from '@/components/ui/BackButton';
 import { MessageRenderer } from '@/components/chat/MessageRenderer';
@@ -548,11 +549,12 @@ export default function ArchitectureDetailPage() {
 
       <AnimatePresence>
         {isTestDialogOpen && (
-          <motion.div
+          <ModalPortal>
+            <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] flex items-center justify-center bg-pixel-black/70 p-4"
+            className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-pixel-black/70 p-4"
             onClick={() => setIsTestDialogOpen(false)}
           >
       <motion.div
@@ -560,11 +562,11 @@ export default function ArchitectureDetailPage() {
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 20 }}
         transition={{ delay: 0.3 }}
-        className="w-full max-w-4xl max-h-[90vh] overflow-hidden bg-pixel-white border-4 border-pixel-black"
+        className="flex max-h-[calc(100dvh-2rem)] w-full max-w-4xl flex-col overflow-hidden border-4 border-pixel-black bg-pixel-white"
         style={{ boxShadow: '8px 8px 0px 0px #101010' }}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="bg-pixel-blue text-pixel-white font-pixel text-xl p-4 border-b-4 border-pixel-black flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2 border-b-4 border-pixel-black bg-pixel-blue p-4 font-pixel text-xl text-pixel-white">
           <span className="animate-pulse">{'>'}</span>
           <span>测试团队</span>
           <div className="ml-auto" />
@@ -582,7 +584,7 @@ export default function ArchitectureDetailPage() {
           </button>
         </div>
 
-        <div className="p-6 min-h-[350px] max-h-[450px] overflow-y-auto bg-pixel-white">
+        <div className="min-h-[350px] flex-1 overflow-y-auto bg-pixel-white p-6">
           <AnimatePresence>
             {chatMessages.map((msg, index) => (
               <motion.div
@@ -622,7 +624,7 @@ export default function ArchitectureDetailPage() {
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="border-t-4 border-pixel-black p-4 bg-pixel-gray/20">
+        <div className="shrink-0 border-t-4 border-pixel-black bg-pixel-gray/20 p-4">
           <div className="flex gap-3">
             <PixelInput
               value={inputValue}
@@ -646,7 +648,8 @@ export default function ArchitectureDetailPage() {
           </p>
         </div>
       </motion.div>
-          </motion.div>
+            </motion.div>
+          </ModalPortal>
         )}
       </AnimatePresence>
     </div>

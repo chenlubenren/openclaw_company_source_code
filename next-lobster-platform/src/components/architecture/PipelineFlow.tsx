@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Architecture, ArchitectureAgent, Lobster } from '@/types';
 import { useStore } from '@/store/useStore';
+import { ModalPortal } from '@/components/ui/ModalPortal';
 
 interface PipelineFlowProps {
   architecture: Architecture;
@@ -200,11 +201,12 @@ export function PipelineFlow({ architecture }: PipelineFlowProps) {
       {/* Lobster Picker Modal */}
       <AnimatePresence>
         {showLobsterPicker && pendingAgentId && (
-          <motion.div
+          <ModalPortal>
+            <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] flex items-center justify-center bg-pixel-black/70"
+            className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-pixel-black/70 p-4"
             onClick={() => {
               setShowLobsterPicker(false);
               setPendingAgentId(null);
@@ -215,7 +217,7 @@ export function PipelineFlow({ architecture }: PipelineFlowProps) {
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              className="bg-pixel-white border-4 border-pixel-black p-6 max-w-lg w-full mx-4"
+              className="flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col overflow-hidden border-4 border-pixel-black bg-pixel-white p-6"
               style={{ boxShadow: '8px 8px 0px 0px #101010' }}
               onClick={(e) => e.stopPropagation()}
             >
@@ -223,7 +225,7 @@ export function PipelineFlow({ architecture }: PipelineFlowProps) {
                 选择Agent
               </h3>
               
-              <div className="space-y-3 max-h-[300px] overflow-y-auto">
+              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
                 {lobsters.map((lobster: Lobster) => (
                   <motion.button
                     key={lobster.id}
@@ -269,7 +271,8 @@ export function PipelineFlow({ architecture }: PipelineFlowProps) {
                 取消
               </button>
             </motion.div>
-          </motion.div>
+            </motion.div>
+          </ModalPortal>
         )}
       </AnimatePresence>
     </div>
