@@ -115,7 +115,7 @@ function ProjectEditorModal({
   onToggleAgent: (agentId: string) => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-pixel-black/70 p-3" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-pixel-black/70 p-3" role="dialog" aria-modal="true">
       <section className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden border-4 border-pixel-black bg-pixel-white" style={{ boxShadow: '8px 8px 0 #101010' }}>
         <div className="shrink-0 flex items-center justify-between gap-3 border-b-4 border-pixel-black bg-pixel-white p-4">
           <div className="min-w-0">

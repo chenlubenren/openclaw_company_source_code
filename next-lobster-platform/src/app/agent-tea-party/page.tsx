@@ -391,7 +391,7 @@ function AddMemberModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-0 md:p-4"
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-0 md:p-4"
       onClick={onClose}
     >
       <motion.div
@@ -613,7 +613,7 @@ function MembersModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-0 md:p-4"
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-0 md:p-4"
       onClick={onClose}
     >
       <motion.div
@@ -873,7 +873,7 @@ function WhiteboardModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-0 md:p-4"
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/55 p-0 md:p-4"
       onClick={onClose}
     >
       <motion.section
@@ -2182,7 +2182,7 @@ export default function AgentTeaPartyPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-0 md:p-4"
+            className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-0 md:p-4"
             onClick={() => setShowCreate(false)}
           >
             <motion.div

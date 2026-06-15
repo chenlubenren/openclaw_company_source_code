@@ -432,7 +432,7 @@ export default function ProviderSettingsPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-pixel-black/50 p-4"
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-pixel-black/50 p-4"
           onClick={() => setCopyProvider(null)}
         >
           <motion.div
@@ -495,7 +495,7 @@ export default function ProviderSettingsPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-pixel-black/50 p-4"
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-pixel-black/50 p-4"
           onClick={() => setShowForm(false)}
         >
           <motion.div

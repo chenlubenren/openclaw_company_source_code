@@ -592,6 +592,7 @@ export function ProjectWorkspace({
       <div className="flex min-h-[640px] flex-col bg-pixel-white lg:h-[calc(100dvh-252px)] lg:min-h-[560px] lg:max-h-[calc(100dvh-150px)] lg:min-w-0 lg:flex-row lg:overflow-hidden">
         <ProjectFilePanel
           project={project}
+          token={token}
           collapsed={fileCollapsed}
           width={filePanelWidth}
           onCollapsedChange={setFileCollapsed}
@@ -748,6 +749,7 @@ export function ProjectWorkspace({
 
 function ProjectFilePanel({
   project,
+  token,
   collapsed,
   width,
   onCollapsedChange,
@@ -757,6 +759,7 @@ function ProjectFilePanel({
   onFileRenamed,
 }: {
   project: Project;
+  token: string | null;
   collapsed: boolean;
   width: number;
   onCollapsedChange: (collapsed: boolean) => void;
@@ -769,6 +772,7 @@ function ProjectFilePanel({
   const [tree, setTree] = useState<ProjectFileTree | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [downloadingArchive, setDownloadingArchive] = useState(false);
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => new Set(['']));
   const [touchLike, setTouchLike] = useState(false);
   const loadingProjectId = useRef('');
@@ -838,6 +842,42 @@ function ProjectFilePanel({
     }
   }, [onFileDeleted, project.id, refreshTree]);
 
+  const handleDownloadArchive = useCallback(async () => {
+    if (downloadingArchive) return;
+    setDownloadingArchive(true);
+    setError('');
+    try {
+      const response = await fetch(`${API_BASE}/api/projects/${project.id}/files/archive`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.message || '项目文件打包下载失败');
+      }
+      const blob = await response.blob();
+      const disposition = response.headers.get('Content-Disposition') || '';
+      const encodedName = disposition.match(/filename\*=UTF-8''([^;]+)/)?.[1];
+      const quotedName = disposition.match(/filename="([^"]+)"/)?.[1];
+      const filename = encodedName
+        ? decodeURIComponent(encodedName)
+        : quotedName
+          ? decodeURIComponent(quotedName)
+          : `${project.name || 'project'}-${project.id.slice(0, 8)}.zip`;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (downloadError) {
+      setError(downloadError instanceof Error ? downloadError.message : '项目文件打包下载失败');
+    } finally {
+      setDownloadingArchive(false);
+    }
+  }, [downloadingArchive, project.id, project.name, token]);
+
   const togglePath = (relativePath: string) => {
     setExpandedPaths((current) => {
       const next = new Set(current);
@@ -884,7 +924,19 @@ function ProjectFilePanel({
         </div>
       </div>
 
-      <div className="h-[390px] overflow-auto bg-pixel-white py-1 font-mono text-[11px] text-pixel-black md:h-[560px] lg:h-[calc(100%-56px)] lg:min-h-0">
+      <div className="border-b-4 border-pixel-black bg-pixel-white px-3 py-2">
+        <button
+          type="button"
+          onClick={() => void handleDownloadArchive()}
+          disabled={downloadingArchive}
+          className="w-full border-2 border-pixel-black bg-pixel-blue px-3 py-2 font-pixel text-xs font-bold text-pixel-white hover:bg-pixel-green hover:text-pixel-black disabled:cursor-wait disabled:opacity-60"
+          style={{ boxShadow: '2px 2px 0 #101010' }}
+        >
+          {downloadingArchive ? '打包中...' : '项目文件打包下载'}
+        </button>
+      </div>
+
+      <div className="h-[390px] overflow-auto bg-pixel-white py-1 font-mono text-[11px] text-pixel-black md:h-[560px] lg:h-[calc(100%-108px)] lg:min-h-0">
         {loading && <p className="px-3 py-2 font-pixel text-xs text-pixel-black/55">读取文件中...</p>}
         {error && <p className="px-3 py-2 font-pixel text-xs text-pixel-red">{error}</p>}
         {!loading && !error && tree?.root.children?.length === 0 && <p className="px-3 py-2 font-pixel text-xs text-pixel-black/55">当前工作区还没有文件。</p>}
@@ -1488,7 +1540,7 @@ function TeamCompositionModal({
 
 function ModalFrame({ title, children, onClose, maxWidthClass }: { title: string; children: ReactNode; onClose: () => void; maxWidthClass: string }) {
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-pixel-black/70 p-3" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-pixel-black/70 p-3" role="dialog" aria-modal="true">
       <div className={`max-h-[92vh] w-full overflow-auto border-4 border-pixel-black bg-pixel-white ${maxWidthClass}`} style={{ boxShadow: '8px 8px 0 #101010' }}>
         <div className="sticky top-0 z-[90] flex items-center justify-between gap-3 border-b-4 border-pixel-black bg-pixel-white p-3">
           <p className="min-w-0 truncate font-pixel text-xl font-bold text-pixel-black">{title}</p>

@@ -48,6 +48,12 @@ export interface ProjectFileContent {
   binary: boolean;
 }
 
+export interface ProjectWorkspaceArchive {
+  filename: string;
+  buffer: Buffer;
+  fileCount: number;
+}
+
 function generateId(): string {
   const bytes = new Uint8Array(16);
   crypto.getRandomValues(bytes);
@@ -341,6 +347,16 @@ function shouldHideProjectTreeEntry(name: string, relativePath: string, isDirect
   return false;
 }
 
+function sanitizeArchiveName(value: string): string {
+  return value
+    .trim()
+    .replace(/[\\/:*?"<>|]+/g, '-')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 80) || 'project';
+}
+
 function assertMutableProjectFilePath(relativePath: string): void {
   if (!relativePath) {
     throw new Error('请选择要操作的文件');
@@ -482,6 +498,49 @@ export async function readProjectFileContent(
     content: binary ? '' : buffer.toString('utf-8').replace(/^\uFEFF/, ''),
     truncated: stats.size > PROJECT_FILE_PREVIEW_MAX_BYTES,
     binary,
+  };
+}
+
+export async function buildProjectWorkspaceArchive(
+  userId: string,
+  projectId: string
+): Promise<ProjectWorkspaceArchive | null> {
+  const project = await getProject(userId, projectId);
+  if (!project) return null;
+
+  const rootPath = path.resolve(resolveStoredProjectPath(project.workspacePath));
+  ensureProjectWorkspace(rootPath);
+
+  const AdmZip = await import('adm-zip');
+  const zip = new AdmZip.default();
+  let fileCount = 0;
+
+  const walk = (dirPath: string): void => {
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true }).sort((a, b) => {
+      if (a.isDirectory() !== b.isDirectory()) return a.isDirectory() ? -1 : 1;
+      return a.name.localeCompare(b.name, 'zh-CN', { sensitivity: 'base' });
+    });
+
+    for (const entry of entries) {
+      const fullPath = path.join(dirPath, entry.name);
+      const relativePath = normalizeRelativeProjectPath(path.relative(rootPath, fullPath));
+      if (shouldHideProjectTreeEntry(entry.name, relativePath, entry.isDirectory())) continue;
+
+      const stats = fs.statSync(fullPath);
+      if (stats.isDirectory()) {
+        walk(fullPath);
+      } else if (stats.isFile()) {
+        zip.addLocalFile(fullPath, path.posix.dirname(relativePath) === '.' ? '' : path.posix.dirname(relativePath));
+        fileCount += 1;
+      }
+    }
+  };
+
+  walk(rootPath);
+  return {
+    filename: `${sanitizeArchiveName(project.name)}-${project.id.slice(0, 8)}.zip`,
+    buffer: zip.toBuffer(),
+    fileCount,
   };
 }
 

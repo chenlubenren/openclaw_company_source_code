@@ -167,7 +167,7 @@ export function AgentConfigModal({ agent, onClose, onSave }: AgentConfigModalPro
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[90] flex items-center justify-center bg-pixel-black/50"
+        className="fixed inset-0 z-[120] flex items-center justify-center overflow-y-auto bg-pixel-black/50 p-4"
         role="dialog"
         aria-modal="true"
         onClick={onClose}
@@ -176,7 +176,7 @@ export function AgentConfigModal({ agent, onClose, onSave }: AgentConfigModalPro
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
-          className="bg-pixel-white border-8 border-pixel-black w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto"
+          className="my-auto w-full max-w-lg border-8 border-pixel-black bg-pixel-white max-h-[90vh] overflow-y-auto"
           style={{ boxShadow: '8px 8px 0px 0px #101010' }}
           onClick={(e) => e.stopPropagation()}
         >

@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { authMiddleware, type AuthenticatedRequest } from '../middleware/auth.middleware.js';
 import {
+  buildProjectWorkspaceArchive,
   createProject,
   deleteProjectFile,
   deleteProject,
@@ -132,6 +133,25 @@ router.get('/:id/files/download', async (req: AuthenticatedRequest, res: Respons
     console.error('Download project file error:', error);
     res.status(400).json({
       message: error instanceof Error ? error.message : '下载文件失败',
+    });
+  }
+});
+
+router.get('/:id/files/archive', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const archive = await buildProjectWorkspaceArchive(req.user!.userId, String(req.params.id));
+    if (!archive) {
+      res.status(404).json({ message: 'Project not found' });
+      return;
+    }
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(archive.filename)}"; filename*=UTF-8''${encodeURIComponent(archive.filename)}`);
+    res.setHeader('X-OpenClaw-File-Count', String(archive.fileCount));
+    res.send(archive.buffer);
+  } catch (error) {
+    console.error('Archive project files error:', error);
+    res.status(400).json({
+      message: error instanceof Error ? error.message : 'Failed to archive project files',
     });
   }
 });

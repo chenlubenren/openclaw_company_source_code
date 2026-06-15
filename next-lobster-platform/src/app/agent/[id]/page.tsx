@@ -1203,7 +1203,7 @@ export default function AgentChatPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[90] bg-pixel-black/40 p-0 md:flex md:items-stretch md:justify-end md:p-4"
+              className="fixed inset-0 z-[120] bg-pixel-black/40 p-0 md:flex md:items-stretch md:justify-end md:p-4"
               role="dialog"
               aria-modal="true"
               onClick={() => setShowSettings(false)}

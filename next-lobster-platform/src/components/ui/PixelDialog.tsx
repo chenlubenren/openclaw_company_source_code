@@ -29,7 +29,7 @@ export function PixelDialog({ isOpen, onClose, title, children }: PixelDialogPro
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-pixel-black/70"
+          className="fixed inset-0 z-[120] flex items-center justify-center overflow-y-auto bg-pixel-black/70 p-4"
           onClick={onClose}
         >
           <motion.div
@@ -37,7 +37,7 @@ export function PixelDialog({ isOpen, onClose, title, children }: PixelDialogPro
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.8, y: 20 }}
             onClick={(e) => e.stopPropagation()}
-            className="bg-pixel-white border-4 border-pixel-black w-full max-w-lg mx-4"
+            className="my-auto w-full max-w-lg border-4 border-pixel-black bg-pixel-white"
             style={{ boxShadow: '8px 8px 0px 0px #101010' }}
           >
             {title && (
